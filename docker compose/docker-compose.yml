@@ -1,0 +1,19 @@
+services:
+  biotools:
+    image: eriklysoe/biotools:latest
+    container_name: biotools
+    restart: unless-stopped
+    ports:
+      - "5590:5590"
+    volumes:
+      - tmp:/app/tmp
+    environment:
+      - MAX_UPLOAD_MB=50
+      - BASE_URL=${BASE_URL:-http://localhost:5590}
+      - TMP_DIR=/app/tmp
+      # Optional HTTP Basic Auth (uncomment and set to enable)
+      # - ADMIN_USER=admin
+      # - ADMIN_PASS=changeme
+
+volumes:
+  tmp:
