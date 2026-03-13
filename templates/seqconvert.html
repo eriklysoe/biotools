@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BioTools – SeqConvert</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #09090b;
+      --surface: rgba(255,255,255,0.03);
+      --surface-hover: rgba(255,255,255,0.06);
+      --surface-solid: #131316;
+      --border: rgba(255,255,255,0.08);
+      --border-hover: rgba(255,255,255,0.15);
+      --text: #fafafa;
+      --text-secondary: #a1a1aa;
+      --text-muted: #71717a;
+      --accent: #6366f1;
+      --accent-light: #818cf8;
+      --accent-glow: rgba(99,102,241,0.15);
+      --accent-glow-strong: rgba(99,102,241,0.25);
+      --success: #22c55e;
+      --success-glow: rgba(34,197,94,0.15);
+      --error: #ef4444;
+      --error-glow: rgba(239,68,68,0.15);
+      --warning: #f59e0b;
+      --radius: 12px;
+      --radius-lg: 16px;
+      --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 3rem 1.25rem;
+      padding-top: 4.5rem;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Subtle grid background ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+      background-size: 64px 64px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Gradient orb behind header ── */
+    body::after {
+      content: '';
+      position: fixed;
+      top: -200px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Navigation bar ── */
+    .topnav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.5rem 1.25rem;
+      background: rgba(9,9,11,0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .topnav-brand {
+      font-size: 0.8125rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-right: 1rem;
+      text-decoration: none;
+      letter-spacing: -0.02em;
+    }
+
+    .topnav-brand span {
+      background: linear-gradient(135deg, var(--accent-light), #c084fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .topnav a.nav-link {
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      text-decoration: none;
+      padding: 0.375rem 0.75rem;
+      border-radius: 8px;
+      transition: all var(--transition);
+    }
+
+    .topnav a.nav-link:hover {
+      color: var(--text);
+      background: var(--surface-hover);
+    }
+
+    .topnav a.nav-link.active {
+      color: var(--accent-light);
+      background: var(--accent-glow);
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 520px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ── Header ── */
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .logo-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, var(--accent), #a78bfa);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .logo-icon svg {
+      width: 22px;
+      height: 22px;
+      stroke: white;
+      fill: none;
+    }
+
+    header h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: var(--text);
+    }
+
+    header h1 span {
+      background: linear-gradient(135deg, var(--accent-light), #c084fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    header p {
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+      font-size: 0.875rem;
+      font-weight: 400;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      width: 100%;
+      margin-bottom: 1rem;
+      transition: border-color var(--transition);
+    }
+
+    .card:hover {
+      border-color: var(--border-hover);
+    }
+
+    .card-title {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+    }
+
+    /* ── Drop zone ── */
+    .dropzone {
+      border: 1.5px dashed rgba(255,255,255,0.12);
+      border-radius: var(--radius);
+      padding: 2.5rem 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .dropzone::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at center, var(--accent-glow) 0%, transparent 70%);
+      opacity: 0;
+      transition: opacity var(--transition);
+    }
+
+    .dropzone:hover::before,
+    .dropzone.dragover::before {
+      opacity: 1;
+    }
+
+    .dropzone:hover,
+    .dropzone.dragover {
+      border-color: var(--accent);
+      border-style: dashed;
+    }
+
+    .dropzone.has-file {
+      border-color: var(--success);
+      border-style: solid;
+    }
+
+    .dropzone.has-file::before {
+      background: radial-gradient(circle at center, var(--success-glow) 0%, transparent 70%);
+      opacity: 1;
+    }
+
+    .dropzone-content {
+      position: relative;
+      z-index: 1;
+    }
+
+    .dropzone-icon {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto 1rem;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.05);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all var(--transition);
+    }
+
+    .dropzone:hover .dropzone-icon,
+    .dropzone.dragover .dropzone-icon {
+      background: var(--accent-glow);
+    }
+
+    .dropzone.has-file .dropzone-icon {
+      background: var(--success-glow);
+    }
+
+    .dropzone-icon svg {
+      width: 24px;
+      height: 24px;
+      stroke: var(--text-muted);
+      transition: stroke var(--transition);
+    }
+
+    .dropzone:hover .dropzone-icon svg,
+    .dropzone.dragover .dropzone-icon svg {
+      stroke: var(--accent-light);
+    }
+
+    .dropzone.has-file .dropzone-icon svg {
+      stroke: var(--success);
+    }
+
+    .dropzone p {
+      color: var(--text-secondary);
+      font-size: 0.8125rem;
+    }
+
+    .dropzone .filename {
+      color: var(--text);
+      font-weight: 600;
+      font-size: 0.9rem;
+      word-break: break-all;
+    }
+
+    .dropzone .filesize {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      margin-top: 0.25rem;
+    }
+
+    .dropzone input { display: none; }
+
+    /* ── Form controls ── */
+    .row {
+      display: flex;
+      gap: 0.75rem;
+    }
+    .row > * { flex: 1; }
+
+    label.field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    select {
+      appearance: none;
+      background: var(--surface-solid);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      padding: 0.625rem 0.875rem;
+      font-size: 0.8125rem;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all var(--transition);
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2371717a'%3E%3Cpath d='M6 8.5L1 3.5h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.75rem center;
+      padding-right: 2.25rem;
+    }
+
+    select:hover {
+      border-color: var(--border-hover);
+      background-color: var(--surface-hover);
+    }
+
+    select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    select option {
+      background: var(--surface-solid);
+      color: var(--text);
+    }
+
+    /* ── Arrow between selects ── */
+    .format-row {
+      display: flex;
+      gap: 0.5rem;
+      align-items: flex-end;
+      margin-bottom: 0.75rem;
+    }
+
+    .format-row > label.field { flex: 1; }
+
+    .arrow-divider {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding-bottom: 0.25rem;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    .arrow-divider svg {
+      width: 20px;
+      height: 20px;
+      stroke: var(--text-muted);
+    }
+
+    /* ── Button ── */
+    .btn {
+      width: 100%;
+      padding: 0.8rem;
+      border: none;
+      border-radius: var(--radius);
+      background: linear-gradient(135deg, var(--accent), #7c3aed);
+      color: #fff;
+      font-size: 0.875rem;
+      font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all var(--transition);
+      position: relative;
+      overflow: hidden;
+      margin-top: 0.25rem;
+    }
+
+    .btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+      opacity: 0;
+      transition: opacity var(--transition);
+    }
+
+    .btn:hover:not(:disabled)::before { opacity: 1; }
+    .btn:hover:not(:disabled) {
+      box-shadow: 0 0 24px var(--accent-glow-strong);
+      transform: translateY(-1px);
+    }
+    .btn:active:not(:disabled) {
+      transform: translateY(0) scale(0.99);
+    }
+    .btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      background: rgba(255,255,255,0.08);
+      color: var(--text-muted);
+    }
+
+    /* ── Status ── */
+    .status {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border-radius: var(--radius);
+      font-size: 0.8125rem;
+      margin-top: 0.75rem;
+      display: none;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .status.error {
+      display: flex;
+      background: var(--error-glow);
+      border: 1px solid rgba(239,68,68,0.25);
+      color: #fca5a5;
+    }
+    .status.success {
+      display: flex;
+      background: var(--success-glow);
+      border: 1px solid rgba(34,197,94,0.25);
+      color: #86efac;
+    }
+    .status.loading {
+      display: flex;
+      background: var(--accent-glow);
+      border: 1px solid rgba(99,102,241,0.25);
+      color: var(--accent-light);
+    }
+
+    .status-icon {
+      flex-shrink: 0;
+      width: 16px;
+      height: 16px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .status.loading .status-icon {
+      animation: spin 1s linear infinite;
+    }
+
+    /* ── Collapsible sections ── */
+    .collapsible {
+      width: 100%;
+      margin-top: 1rem;
+    }
+
+    .collapsible-trigger {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 0.75rem;
+      font-family: 'Inter', sans-serif;
+      font-weight: 500;
+      padding: 0.625rem 1rem;
+      width: 100%;
+      text-align: left;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all var(--transition);
+    }
+
+    .collapsible-trigger:hover {
+      background: var(--surface);
+      border-color: var(--border-hover);
+      color: var(--text);
+    }
+
+    .collapsible-trigger.open {
+      border-radius: var(--radius) var(--radius) 0 0;
+      background: var(--surface);
+      border-bottom-color: transparent;
+    }
+
+    .collapsible-chevron {
+      width: 14px;
+      height: 14px;
+      stroke: currentColor;
+      transition: transform var(--transition);
+    }
+
+    .collapsible-trigger.open .collapsible-chevron {
+      transform: rotate(180deg);
+    }
+
+    .collapsible-body {
+      display: none;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 var(--radius) var(--radius);
+      overflow: hidden;
+    }
+
+    .collapsible-body.open {
+      display: block;
+    }
+
+    /* ── API hint ── */
+    .api-code {
+      font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+      font-size: 0.7rem;
+      line-height: 1.7;
+      color: var(--text-secondary);
+      padding: 1rem 1.25rem;
+      overflow-x: auto;
+      white-space: pre;
+    }
+
+    .api-code .cmd { color: var(--success); }
+    .api-code .flag { color: var(--accent-light); }
+    .api-code .str { color: #f59e0b; }
+    .api-code .url { color: var(--text-muted); }
+
+    /* ── Format table ── */
+    .format-table-wrap {
+      max-height: 320px;
+      overflow-y: auto;
+    }
+
+    .format-table-wrap::-webkit-scrollbar {
+      width: 4px;
+    }
+    .format-table-wrap::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .format-table-wrap::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 4px;
+    }
+
+    .format-table table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.75rem;
+    }
+
+    .format-table th,
+    .format-table td {
+      text-align: left;
+      padding: 0.5rem 1rem;
+    }
+
+    .format-table th {
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 0.6875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      position: sticky;
+      top: 0;
+      background: var(--surface-solid);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .format-table tr {
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      transition: background var(--transition);
+    }
+
+    .format-table tbody tr:hover {
+      background: rgba(255,255,255,0.02);
+    }
+
+    .format-table td:first-child {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      white-space: nowrap;
+      color: var(--accent-light);
+    }
+
+    .format-table td:last-child {
+      color: var(--text-muted);
+    }
+
+    /* ── Footer ── */
+    footer {
+      margin-top: 2.5rem;
+      color: var(--text-muted);
+      font-size: 0.6875rem;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    footer span { opacity: 0.3; }
+
+    footer a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      transition: color var(--transition);
+    }
+    footer a:hover { color: var(--text); }
+
+    /* ── Responsive ── */
+    @media (max-width: 480px) {
+      body { padding: 1.5rem 1rem; padding-top: 4rem; }
+      .format-row { flex-direction: column; gap: 0.75rem; }
+      .arrow-divider { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="topnav">
+    <a class="topnav-brand" href="/"><span>Bio</span>Tools</a>
+    <a class="nav-link active" href="/seqconvert">SeqConvert</a>
+    <a class="nav-link" href="/venn">Venn Diagram</a>
+  </nav>
+
+  <div class="container">
+    <header>
+      <div class="logo">
+        <div class="logo-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 12h8"/>
+            <path d="M4 18V6"/>
+            <path d="M12 18V6"/>
+            <path d="M20 18V6"/>
+            <path d="M12 12h8"/>
+          </svg>
+        </div>
+        <h1><span>Seq</span>Convert</h1>
+      </div>
+      <p>Biological sequence format converter powered by Biopython</p>
+    </header>
+
+    <!-- File upload -->
+    <div class="card">
+      <div class="card-title">Input file</div>
+      <div class="dropzone" id="dropzone">
+        <div class="dropzone-content">
+          <div class="dropzone-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+            </svg>
+          </div>
+          <p>Drop a sequence file here or click to browse</p>
+        </div>
+        <input type="file" id="fileInput">
+      </div>
+    </div>
+
+    <!-- Format selectors -->
+    <div class="card">
+      <div class="card-title">Conversion settings</div>
+      <div class="format-row">
+        <label class="field">
+          From
+          <select id="inputFormat">
+            {% for fmt in input_formats %}
+            <option value="{{ fmt }}" {% if fmt == 'fasta' %}selected{% endif %}>{{ fmt }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <div class="arrow-divider">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+          </svg>
+        </div>
+        <label class="field">
+          To
+          <select id="outputFormat">
+            {% for fmt in output_formats %}
+            <option value="{{ fmt }}" {% if fmt == 'genbank' %}selected{% endif %}>{{ fmt }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </div>
+      <label class="field">
+        Molecule type
+        <select id="moleculeType">
+          {% for mt in molecule_types %}
+          <option value="{{ mt }}">{{ mt if mt != 'none' else 'Auto / None' }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </div>
+
+    <button class="btn" id="convertBtn" disabled>Convert &amp; Download</button>
+
+    <div class="status" id="status"></div>
+
+    <!-- API usage hint -->
+    <div class="collapsible">
+      <button class="collapsible-trigger" id="apiToggle">
+        API / CLI usage
+        <svg class="collapsible-chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+        </svg>
+      </button>
+      <div class="collapsible-body" id="apiBody">
+        <div class="api-code" id="apiCode"></div>
+      </div>
+    </div>
+
+    <!-- Format reference -->
+    <div class="collapsible">
+      <button class="collapsible-trigger" id="infoToggle">
+        Format reference
+        <svg class="collapsible-chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+        </svg>
+      </button>
+      <div class="collapsible-body format-table" id="formatTable">
+        <div class="format-table-wrap">
+          <table>
+            <thead><tr><th>Format</th><th>Description</th></tr></thead>
+            <tbody>
+              {% for key, desc in format_info.items() %}
+              <tr><td>{{ key }}</td><td>{{ desc }}</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      BioTools – SeqConvert
+      <span>&middot;</span>
+      Biopython Bio.SeqIO
+      <span>&middot;</span>
+      <a href="/api/formats">JSON API</a>
+    </footer>
+  </div>
+
+<script>
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const convertBtn = document.getElementById('convertBtn');
+  const status = document.getElementById('status');
+
+  let selectedFile = null;
+
+  // ── Drop zone logic ──
+  dropzone.addEventListener('click', () => fileInput.click());
+  dropzone.addEventListener('dragover', e => {
+    e.preventDefault();
+    dropzone.classList.add('dragover');
+  });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+  dropzone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropzone.classList.remove('dragover');
+    if (e.dataTransfer.files.length) setFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files.length) setFile(fileInput.files[0]);
+  });
+
+  function setFile(file) {
+    selectedFile = file;
+    dropzone.classList.add('has-file');
+    const content = dropzone.querySelector('.dropzone-content');
+    const size = file.size < 1024 * 1024
+      ? (file.size / 1024).toFixed(1) + ' KB'
+      : (file.size / (1024 * 1024)).toFixed(2) + ' MB';
+    content.querySelector('p').innerHTML =
+      `<span class="filename">${file.name}</span><span class="filesize">${size}</span>`;
+    convertBtn.disabled = false;
+    clearStatus();
+  }
+
+  // ── Conversion ──
+  convertBtn.addEventListener('click', async () => {
+    if (!selectedFile) return;
+
+    convertBtn.disabled = true;
+    showStatus('loading', 'Converting\u2026');
+
+    const form = new FormData();
+    form.append('file', selectedFile);
+    form.append('input_format', document.getElementById('inputFormat').value);
+    form.append('output_format', document.getElementById('outputFormat').value);
+    form.append('molecule_type', document.getElementById('moleculeType').value);
+
+    try {
+      const resp = await fetch('/api/convert', { method: 'POST', body: form });
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(err.error || `HTTP ${resp.status}`);
+      }
+
+      const blob = await resp.blob();
+      const cd = resp.headers.get('content-disposition') || '';
+      const match = cd.match(/filename="?(.+?)"?$/);
+      const filename = match ? match[1] : 'converted.txt';
+
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(a.href);
+
+      showStatus('success', `Downloaded ${filename}`);
+    } catch (e) {
+      showStatus('error', e.message);
+    } finally {
+      convertBtn.disabled = false;
+    }
+  });
+
+  // ── Status helpers ──
+  const statusIcons = {
+    loading: '<svg class="status-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>',
+    success: '<svg class="status-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>',
+    error: '<svg class="status-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg>',
+  };
+
+  function showStatus(type, msg) {
+    status.className = `status ${type}`;
+    status.innerHTML = `${statusIcons[type] || ''}<span>${msg}</span>`;
+  }
+
+  function clearStatus() {
+    status.className = 'status';
+    status.innerHTML = '';
+  }
+
+  // ── Collapsible toggle ──
+  document.querySelectorAll('.collapsible-trigger').forEach(trigger => {
+    trigger.addEventListener('click', () => {
+      const body = trigger.nextElementSibling;
+      trigger.classList.toggle('open');
+      body.classList.toggle('open');
+    });
+  });
+
+  // ── Dynamic API hint ──
+  const inputFmt = document.getElementById('inputFormat');
+  const outputFmt = document.getElementById('outputFormat');
+  const molType = document.getElementById('moleculeType');
+  const apiCode = document.getElementById('apiCode');
+  const baseUrl = {{ base_url | tojson }};
+
+  function updateApiHint() {
+    const inF = inputFmt.value;
+    const outF = outputFmt.value;
+    const mol = molType.value;
+    const molLine = mol !== 'none'
+      ? `\n     <span class="flag">-F</span> <span class="str">"molecule_type=${mol}"</span> \\`
+      : '';
+    apiCode.innerHTML =
+      `<span class="cmd">curl</span> <span class="flag">-F</span> <span class="str">"file=@input.${inF}"</span> \\` +
+      `\n     <span class="flag">-F</span> <span class="str">"input_format=${inF}"</span> \\` +
+      `\n     <span class="flag">-F</span> <span class="str">"output_format=${outF}"</span> \\` +
+      molLine +
+      `\n     <span class="url">${baseUrl}/api/convert</span> \\` +
+      `\n     <span class="flag">-o</span> output.${outF}`;
+  }
+
+  inputFmt.addEventListener('change', updateApiHint);
+  outputFmt.addEventListener('change', updateApiHint);
+  molType.addEventListener('change', updateApiHint);
+  updateApiHint();
+</script>
+
+</body>
+</html>

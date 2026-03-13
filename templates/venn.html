@@ -1,0 +1,2074 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BioTools – Venn Diagram</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #09090b;
+      --surface: rgba(255,255,255,0.03);
+      --surface-hover: rgba(255,255,255,0.06);
+      --surface-solid: #131316;
+      --border: rgba(255,255,255,0.08);
+      --border-hover: rgba(255,255,255,0.15);
+      --text: #fafafa;
+      --text-secondary: #a1a1aa;
+      --text-muted: #71717a;
+      --accent: #6366f1;
+      --accent-light: #818cf8;
+      --accent-glow: rgba(99,102,241,0.15);
+      --accent-glow-strong: rgba(99,102,241,0.25);
+      --success: #22c55e;
+      --success-glow: rgba(34,197,94,0.15);
+      --error: #ef4444;
+      --error-glow: rgba(239,68,68,0.15);
+      --warning: #f59e0b;
+      --radius: 12px;
+      --radius-lg: 16px;
+      --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    [data-theme="light"] {
+      --bg: #f5f5f5;
+      --surface: rgba(0,0,0,0.03);
+      --surface-hover: rgba(0,0,0,0.06);
+      --surface-solid: #ffffff;
+      --border: rgba(0,0,0,0.12);
+      --border-hover: rgba(0,0,0,0.20);
+      --text: #18181b;
+      --text-secondary: #52525b;
+      --text-muted: #71717a;
+      --accent: #6366f1;
+      --accent-light: #4f46e5;
+      --accent-glow: rgba(99,102,241,0.10);
+      --accent-glow-strong: rgba(99,102,241,0.18);
+      --success: #16a34a;
+      --success-glow: rgba(22,163,74,0.10);
+      --error: #dc2626;
+      --error-glow: rgba(220,38,38,0.08);
+    }
+
+    [data-theme="light"] body::before {
+      background-image:
+        linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px);
+    }
+
+    [data-theme="light"] body::after {
+      background: radial-gradient(circle, rgba(99,102,241,0.06) 0%, transparent 70%);
+    }
+
+    [data-theme="light"] .logo-icon svg { stroke: white; }
+
+    [data-theme="light"] header h1 span {
+      background: linear-gradient(135deg, var(--accent), #7c3aed);
+      -webkit-background-clip: text;
+      background-clip: text;
+    }
+
+    [data-theme="light"] .multi-dropzone {
+      border-color: rgba(0,0,0,0.15);
+    }
+
+    [data-theme="light"] .summary-table tr {
+      border-bottom-color: rgba(0,0,0,0.06);
+    }
+
+    [data-theme="light"] .summary-table tbody tr:hover {
+      background: rgba(0,0,0,0.03);
+    }
+
+    [data-theme="light"] .status.error {
+      background: var(--error-glow);
+      border-color: rgba(220,38,38,0.25);
+      color: #991b1b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1.25rem; padding-top: 4.5rem;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+      background-size: 64px 64px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      top: -200px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 1100px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ── Header ── */
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .logo-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, var(--accent), #a78bfa);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .logo-icon svg {
+      width: 22px;
+      height: 22px;
+      stroke: white;
+      fill: none;
+    }
+
+    header h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: var(--text);
+    }
+
+    header h1 span {
+      background: linear-gradient(135deg, var(--accent-light), #c084fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    header p {
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+      font-size: 0.875rem;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      width: 100%;
+      margin-bottom: 1rem;
+      transition: border-color var(--transition);
+    }
+
+    .card:hover {
+      border-color: var(--border-hover);
+    }
+
+    .card-title {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* ── Input sets grid ── */
+    .sets-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 0.75rem;
+    }
+
+    .set-panel {
+      background: var(--surface-solid);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      transition: border-color var(--transition);
+    }
+
+    .set-panel:hover {
+      border-color: var(--border-hover);
+    }
+
+    .set-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .set-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .set-name-input {
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      flex: 1;
+      outline: none;
+      padding: 0.2rem 0;
+      border-bottom: 1px solid transparent;
+      transition: border-color var(--transition);
+    }
+
+    .set-name-input:focus {
+      border-bottom-color: var(--accent);
+    }
+
+    .set-remove-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 0.2rem;
+      display: flex;
+      align-items: center;
+      transition: color var(--transition);
+    }
+
+    .set-remove-btn:hover { color: var(--error); }
+
+    .set-textarea {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      line-height: 1.6;
+      padding: 0.625rem;
+      resize: vertical;
+      min-height: 120px;
+      max-height: 300px;
+      outline: none;
+      transition: border-color var(--transition);
+    }
+
+    .set-textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    .set-textarea::placeholder {
+      color: var(--text-muted);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.75rem;
+    }
+
+    .set-file-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .set-file-btn {
+      background: var(--surface-hover);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-secondary);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.6875rem;
+      font-weight: 500;
+      padding: 0.375rem 0.625rem;
+      cursor: pointer;
+      transition: all var(--transition);
+      white-space: nowrap;
+    }
+
+    .set-file-btn:hover {
+      background: var(--accent-glow);
+      border-color: var(--accent);
+      color: var(--accent-light);
+    }
+
+    .set-file-name {
+      font-size: 0.6875rem;
+      color: var(--text-muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .set-count {
+      font-size: 0.6875rem;
+      color: var(--text-muted);
+      text-align: right;
+    }
+
+    /* ── Multi-file upload dropzone ── */
+    .multi-dropzone {
+      border: 1.5px dashed rgba(255,255,255,0.12);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .multi-dropzone::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at center, var(--accent-glow) 0%, transparent 70%);
+      opacity: 0;
+      transition: opacity var(--transition);
+    }
+
+    .multi-dropzone:hover::before,
+    .multi-dropzone.dragover::before {
+      opacity: 1;
+    }
+
+    .multi-dropzone:hover,
+    .multi-dropzone.dragover {
+      border-color: var(--accent);
+    }
+
+    .multi-dropzone.has-file {
+      border-color: var(--success);
+      border-style: solid;
+    }
+
+    .multi-dropzone.has-file::before {
+      background: radial-gradient(circle at center, var(--success-glow) 0%, transparent 70%);
+      opacity: 1;
+    }
+
+    .multi-dropzone-content {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+    }
+
+    .multi-dropzone-content svg {
+      width: 20px;
+      height: 20px;
+      stroke: var(--text-muted);
+      flex-shrink: 0;
+      transition: stroke var(--transition);
+    }
+
+    .multi-dropzone:hover .multi-dropzone-content svg,
+    .multi-dropzone.dragover .multi-dropzone-content svg {
+      stroke: var(--accent-light);
+    }
+
+    .multi-dropzone.has-file .multi-dropzone-content svg {
+      stroke: var(--success);
+    }
+
+    .multi-dropzone p {
+      color: var(--text-secondary);
+      font-size: 0.8125rem;
+    }
+
+    .multi-dropzone .multi-filename {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .multi-dropzone input { display: none; }
+
+    .multi-hint {
+      font-size: 0.6875rem;
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+      line-height: 1.5;
+    }
+
+    .multi-or-divider {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin: 0.75rem 0 0.25rem;
+      color: var(--text-muted);
+      font-size: 0.6875rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .multi-or-divider::before,
+    .multi-or-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── Add set button ── */
+    .add-set-btn {
+      background: var(--surface);
+      border: 1.5px dashed var(--border);
+      border-radius: var(--radius);
+      color: var(--text-muted);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      padding: 2rem 1rem;
+      cursor: pointer;
+      transition: all var(--transition);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      min-height: 120px;
+    }
+
+    .add-set-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent-light);
+      background: var(--accent-glow);
+    }
+
+    /* ── Buttons ── */
+    .btn {
+      padding: 0.8rem 2rem;
+      border: none;
+      border-radius: var(--radius);
+      background: linear-gradient(135deg, var(--accent), #7c3aed);
+      color: #fff;
+      font-size: 0.875rem;
+      font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+      opacity: 0;
+      transition: opacity var(--transition);
+    }
+
+    .btn:hover:not(:disabled)::before { opacity: 1; }
+    .btn:hover:not(:disabled) {
+      box-shadow: 0 0 24px var(--accent-glow-strong);
+      transform: translateY(-1px);
+    }
+    .btn:active:not(:disabled) {
+      transform: translateY(0) scale(0.99);
+    }
+    .btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      background: rgba(255,255,255,0.08);
+      color: var(--text-muted);
+    }
+
+    /* ── Fill mode selector ── */
+    .fill-mode-group {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-top: 0.5rem;
+    }
+    .fill-mode-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .fill-mode-options {
+      display: flex;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .fill-mode-options input[type="radio"] { display: none; }
+    .fill-mode-options label {
+      padding: 0.4rem 0.75rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      font-family: 'Inter', sans-serif;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all var(--transition);
+      border-right: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .fill-mode-options label:last-of-type { border-right: none; }
+    .fill-mode-options label:hover { color: var(--text); background: var(--surface-hover); }
+    .fill-mode-options input[type="radio"]:checked + label {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 0.5rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .btn-secondary {
+      padding: 0.6rem 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--text-secondary);
+      font-size: 0.8125rem;
+      font-weight: 500;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+
+    .btn-secondary:hover {
+      background: var(--surface-hover);
+      border-color: var(--border-hover);
+      color: var(--text);
+    }
+
+    /* ── Venn diagram area ── */
+    .venn-wrapper {
+      width: 100%;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .venn-wrapper.visible { display: flex; }
+
+    .venn-svg-container {
+      width: 100%;
+      max-width: 700px;
+      position: relative;
+    }
+
+    .venn-svg-container svg {
+      width: 100%;
+      height: auto;
+    }
+
+    .venn-svg-container svg ellipse,
+    .venn-svg-container svg circle {
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+
+    .venn-region {
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+
+    .venn-region:hover {
+      opacity: 0.85;
+    }
+
+    .venn-label {
+      font-family: 'Inter', sans-serif;
+      pointer-events: none;
+    }
+
+    .venn-count {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 500;
+      fill: var(--text);
+      pointer-events: none;
+    }
+
+    /* ── ID list panel ── */
+    .id-list-panel {
+      width: 100%;
+      margin-top: 1rem;
+      display: none;
+    }
+
+    .id-list-panel.visible { display: block; }
+
+    .id-list-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+    }
+
+    .id-list-title {
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .id-list-subtitle {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .id-list-copy-btn {
+      background: var(--surface-hover);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-secondary);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.6875rem;
+      font-weight: 500;
+      padding: 0.375rem 0.75rem;
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+
+    .id-list-copy-btn:hover {
+      background: var(--accent-glow);
+      border-color: var(--accent);
+      color: var(--accent-light);
+    }
+
+    .id-list-box {
+      background: var(--surface-solid);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.75rem 1rem;
+      max-height: 250px;
+      overflow-y: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      line-height: 1.7;
+      color: var(--text-secondary);
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .id-list-box::-webkit-scrollbar { width: 4px; }
+    .id-list-box::-webkit-scrollbar-track { background: transparent; }
+    .id-list-box::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    /* ── Summary table ── */
+    .summary-table {
+      width: 100%;
+      margin-top: 1rem;
+      display: none;
+    }
+
+    .summary-table.visible { display: block; }
+
+    .summary-table table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.75rem;
+    }
+
+    .summary-table th,
+    .summary-table td {
+      text-align: left;
+      padding: 0.5rem 0.75rem;
+    }
+
+    .summary-table th {
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 0.6875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: var(--surface-solid);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+    }
+
+    .summary-table tr {
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      cursor: pointer;
+      transition: background var(--transition);
+    }
+
+    .summary-table tbody tr:hover {
+      background: rgba(255,255,255,0.03);
+    }
+
+    .summary-table tbody tr.active {
+      background: var(--accent-glow);
+    }
+
+    .summary-table td:first-child {
+      color: var(--accent-light);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+    }
+
+    .summary-table td:last-child {
+      font-family: 'JetBrains Mono', monospace;
+      text-align: right;
+    }
+
+    .summary-table-wrap {
+      max-height: 300px;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
+    .summary-table-wrap::-webkit-scrollbar { width: 4px; }
+    .summary-table-wrap::-webkit-scrollbar-track { background: transparent; }
+    .summary-table-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    /* ── Status ── */
+    .status {
+      width: 100%;
+      max-width: 600px;
+      padding: 0.75rem 1rem;
+      border-radius: var(--radius);
+      font-size: 0.8125rem;
+      margin-top: 0.75rem;
+      display: none;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .status.error {
+      display: flex;
+      background: var(--error-glow);
+      border: 1px solid rgba(239,68,68,0.25);
+      color: #fca5a5;
+    }
+
+    /* ── Footer ── */
+    footer {
+      margin-top: 2.5rem;
+      color: var(--text-muted);
+      font-size: 0.6875rem;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    footer span { opacity: 0.3; }
+
+    /* ── Theme toggle ── */
+    .theme-toggle {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 100;
+      background: var(--surface-solid);
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all var(--transition);
+      color: var(--text-muted);
+    }
+    .theme-toggle:hover {
+      border-color: var(--accent);
+      color: var(--accent-light);
+      background: var(--accent-glow);
+    }
+    .theme-toggle svg { width: 18px; height: 18px; }
+    .theme-toggle .icon-sun { display: none; }
+    [data-theme="light"] .theme-toggle .icon-moon { display: none; }
+    [data-theme="light"] .theme-toggle .icon-sun { display: block; }
+
+    /* ── Navigation bar ── */
+    .topnav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.5rem 1.25rem;
+      background: rgba(9,9,11,0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .topnav-brand {
+      font-size: 0.8125rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-right: 1rem;
+      text-decoration: none;
+      letter-spacing: -0.02em;
+    }
+
+    .topnav-brand span {
+      background: linear-gradient(135deg, var(--accent-light), #c084fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .topnav a.nav-link {
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      text-decoration: none;
+      padding: 0.375rem 0.75rem;
+      border-radius: 8px;
+      transition: all var(--transition);
+    }
+
+    .topnav a.nav-link:hover {
+      color: var(--text);
+      background: var(--surface-hover);
+    }
+
+    .topnav a.nav-link.active {
+      color: var(--accent-light);
+      background: var(--accent-glow);
+    }
+
+    [data-theme="light"] .topnav {
+      background: rgba(245,245,245,0.85);
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 600px) {
+      body { padding: 1.5rem 0.75rem; padding-top: 4rem; }
+      .sets-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="topnav">
+    <a class="topnav-brand" href="/"><span>Bio</span>Tools</a>
+    <a class="nav-link" href="/seqconvert">SeqConvert</a>
+    <a class="nav-link active" href="/venn">Venn Diagram</a>
+  </nav>
+  <button class="theme-toggle" id="themeToggle" title="Toggle light/dark mode">
+    <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0112.478 3.34a9.75 9.75 0 109.274 11.662z"/></svg>
+    <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1.5M12 19.5V21M4.219 4.219l1.061 1.061M17.72 17.72l1.06 1.06M3 12h1.5M19.5 12H21M4.219 19.781l1.061-1.061M17.72 6.28l1.06-1.06"/><circle cx="12" cy="12" r="4.5"/></svg>
+  </button>
+  <div class="container">
+    <header>
+      <div class="logo">
+        <div class="logo-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="9" cy="10" r="6"/>
+            <circle cx="15" cy="10" r="6"/>
+          </svg>
+        </div>
+        <h1><span>Venn</span>App</h1>
+      </div>
+      <p>Interactive Venn diagram tool for comparing ID lists</p>
+    </header>
+
+    <!-- Input sets -->
+    <div class="card">
+      <div class="card-title">
+        Input Sets
+      </div>
+
+      <!-- Multi-set file upload -->
+      <div class="multi-dropzone" id="multiDropzone">
+        <div class="multi-dropzone-content">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+          </svg>
+          <p>Drop a multi-set file here or click to browse</p>
+        </div>
+        <input type="file" id="multiFileInput" accept=".tsv,.csv,.txt,.tab">
+      </div>
+      <div class="multi-hint">
+        Accepts TSV, CSV, or tab-delimited files. Each column = one set. First row = set names. One ID per cell.
+      </div>
+
+      <div class="multi-or-divider">or enter sets manually</div>
+
+      <div class="sets-grid" id="setsGrid">
+        <!-- Panels injected by JS -->
+      </div>
+    </div>
+
+    <div class="fill-mode-group">
+      <span class="fill-mode-label">Fill style:</span>
+      <div class="fill-mode-options">
+        <input type="radio" name="fillMode" id="fillColors" value="colors" checked>
+        <label for="fillColors">Colors</label>
+        <input type="radio" name="fillMode" id="fillWhite" value="white">
+        <label for="fillWhite">Solid White</label>
+        <input type="radio" name="fillMode" id="fillPercent" value="percent">
+        <label for="fillPercent">Overlap %</label>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" id="compareBtn">Generate Venn Diagram</button>
+    </div>
+
+    <div class="status" id="status"></div>
+
+    <!-- Results -->
+    <div class="venn-wrapper" id="vennWrapper">
+      <div class="card" style="margin-top:1rem;">
+        <div class="card-title">
+          Venn Diagram
+          <div style="display:flex;gap:0.5rem;">
+            <button class="btn-secondary" id="exportSvgBtn">Export SVG</button>
+            <button class="btn-secondary" id="exportPngBtn">Export PNG</button>
+            <button class="btn-secondary" id="exportPdfBtn">Export PDF</button>
+            <button class="btn-secondary" id="exportCsvBtn">Export CSV</button>
+          </div>
+        </div>
+        <div class="venn-svg-container" id="vennContainer"></div>
+        <div class="id-list-panel" id="idListPanel">
+          <div class="id-list-header">
+            <div>
+              <div class="id-list-title" id="idListTitle"></div>
+              <div class="id-list-subtitle" id="idListSubtitle"></div>
+            </div>
+            <button class="id-list-copy-btn" id="idListCopyBtn">Copy IDs</button>
+          </div>
+          <div class="id-list-box" id="idListBox"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">All Regions</div>
+        <div class="summary-table visible" id="summaryTable">
+          <div class="summary-table-wrap">
+            <table>
+              <thead><tr><th>Region</th><th>Count</th></tr></thead>
+              <tbody id="summaryBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      BioTools – VennApp
+      <span>&middot;</span>
+      Interactive ID Comparison
+    </footer>
+  </div>
+
+<script>
+// ── Set colors ──
+// Colorblind-friendly palette (Wong 2011)
+const SET_COLORS = [
+  '#0072B2', '#E69F00', '#009E73', '#CC79A7', '#56B4E9', '#D55E00'
+];
+const SET_COLORS_ALPHA = [
+  'rgba(0,114,178,0.28)', 'rgba(230,159,0,0.28)', 'rgba(0,158,115,0.28)',
+  'rgba(204,121,167,0.28)', 'rgba(86,180,233,0.28)', 'rgba(213,94,0,0.28)'
+];
+
+function getFillMode() {
+  return document.querySelector('input[name="fillMode"]:checked').value;
+}
+
+function isLightTheme() {
+  return document.documentElement.getAttribute('data-theme') === 'light';
+}
+
+function themeText() {
+  return isLightTheme() ? '#18181b' : '#fafafa';
+}
+
+function themeBg() {
+  return isLightTheme() ? '#f5f5f5' : '#09090b';
+}
+
+// Return fill/stroke for a shape given set index
+function getRegionFill(setIndex, overlapCount, totalSets) {
+  const mode = getFillMode();
+  const light = isLightTheme();
+  if (mode === 'colors') {
+    return { fill: SET_COLORS_ALPHA[setIndex], stroke: SET_COLORS[setIndex] };
+  } else if (mode === 'white') {
+    return light
+      ? { fill: 'rgba(0,0,0,0.06)', stroke: 'rgba(0,0,0,0.4)' }
+      : { fill: 'rgba(255,255,255,0.15)', stroke: 'rgba(255,255,255,0.6)' };
+  } else { // percent
+    return light
+      ? { fill: 'rgba(0,0,0,0.04)', stroke: 'rgba(0,0,0,0.35)' }
+      : { fill: 'rgba(255,255,255,0.08)', stroke: 'rgba(255,255,255,0.5)' };
+  }
+}
+
+// For overlap regions — "percent" mode uses progressive shading
+function getOverlapFill(overlapCount, totalSets) {
+  const mode = getFillMode();
+  const light = isLightTheme();
+  if (mode === 'colors') {
+    return light ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.12)';
+  } else if (mode === 'white') {
+    return light ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.12)';
+  } else { // percent — more overlap = stronger shading
+    const t = (overlapCount - 1) / Math.max(1, totalSets - 1);
+    const opacity = 0.10 + t * 0.40;
+    return light
+      ? `rgba(0,0,0,${opacity.toFixed(2)})`
+      : `rgba(255,255,255,${opacity.toFixed(2)})`;
+  }
+}
+
+let sets = [];
+let comparisonResult = null;
+
+// ── Initialize with 2 sets ──
+function init() {
+  addSet('Set 1');
+  addSet('Set 2');
+}
+
+function addSet(name) {
+  if (sets.length >= 4) return;
+  const id = Date.now() + Math.random();
+  sets.push({ id, name: name || `Set ${sets.length + 1}` });
+  renderSets();
+}
+
+function removeSet(id) {
+  if (sets.length <= 2) return;
+  sets = sets.filter(s => s.id !== id);
+  renderSets();
+}
+
+function renderSets() {
+  const grid = document.getElementById('setsGrid');
+  grid.innerHTML = '';
+
+  sets.forEach((s, i) => {
+    const color = SET_COLORS[i % SET_COLORS.length];
+    const panel = document.createElement('div');
+    panel.className = 'set-panel';
+    panel.innerHTML = `
+      <div class="set-header">
+        <div class="set-color" style="background:${color}"></div>
+        <input class="set-name-input" value="${s.name}" data-id="${s.id}" maxlength="30">
+        ${sets.length > 2 ? `<button class="set-remove-btn" data-id="${s.id}" title="Remove set">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>` : ''}
+      </div>
+      <textarea class="set-textarea" data-id="${s.id}" placeholder="Paste IDs here (one per line)&#10;&#10;or use Upload File below">${s.text || ''}</textarea>
+      <div class="set-file-row">
+        <button class="set-file-btn" data-id="${s.id}">Upload File</button>
+        <span class="set-file-name" data-id="${s.id}"></span>
+        <input type="file" style="display:none" data-id="${s.id}">
+      </div>
+      <div class="set-count" data-id="${s.id}">0 IDs</div>
+    `;
+    grid.appendChild(panel);
+  });
+
+  // Add the "add set" button if < 4
+  if (sets.length < 4) {
+    const addBtn = document.createElement('button');
+    addBtn.className = 'add-set-btn';
+    addBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg> Add Set`;
+    addBtn.addEventListener('click', () => addSet());
+    grid.appendChild(addBtn);
+  }
+
+  // Wire up events
+  grid.querySelectorAll('.set-name-input').forEach(el => {
+    el.addEventListener('input', e => {
+      const s = sets.find(s => s.id == e.target.dataset.id);
+      if (s) s.name = e.target.value;
+    });
+  });
+
+  grid.querySelectorAll('.set-remove-btn').forEach(el => {
+    el.addEventListener('click', e => {
+      const btn = e.target.closest('.set-remove-btn');
+      removeSet(Number(btn.dataset.id));
+    });
+  });
+
+  grid.querySelectorAll('.set-textarea').forEach(el => {
+    el.addEventListener('input', e => {
+      const s = sets.find(s => s.id == e.target.dataset.id);
+      if (s) s.text = e.target.value;
+      updateCount(e.target.dataset.id);
+    });
+    // Restore text
+    const s = sets.find(s => s.id == el.dataset.id);
+    if (s && s.text) el.value = s.text;
+  });
+
+  grid.querySelectorAll('.set-file-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const input = grid.querySelector(`input[type="file"][data-id="${btn.dataset.id}"]`);
+      input.click();
+    });
+  });
+
+  grid.querySelectorAll('input[type="file"]').forEach(input => {
+    input.addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const nameEl = grid.querySelector(`.set-file-name[data-id="${input.dataset.id}"]`);
+      nameEl.textContent = file.name;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const ta = grid.querySelector(`.set-textarea[data-id="${input.dataset.id}"]`);
+        ta.value = reader.result;
+        const s = sets.find(s => s.id == input.dataset.id);
+        if (s) s.text = reader.result;
+        updateCount(input.dataset.id);
+      };
+      reader.readAsText(file);
+    });
+  });
+
+  sets.forEach(s => updateCount(s.id));
+}
+
+function parseIds(text) {
+  if (!text) return [];
+  return text.split(/[\r\n]+/)
+    .map(l => l.trim())
+    .filter(l => l.length > 0);
+}
+
+function updateCount(id) {
+  const ta = document.querySelector(`.set-textarea[data-id="${id}"]`);
+  const countEl = document.querySelector(`.set-count[data-id="${id}"]`);
+  if (!ta || !countEl) return;
+  const ids = parseIds(ta.value);
+  const unique = new Set(ids).size;
+  countEl.textContent = `${unique} unique ID${unique !== 1 ? 's' : ''}`;
+}
+
+// ── Fill mode change re-renders the diagram ──
+document.querySelectorAll('input[name="fillMode"]').forEach(radio => {
+  radio.addEventListener('change', () => {
+    if (comparisonResult) renderVenn();
+  });
+});
+
+// ── Compare ──
+document.getElementById('compareBtn').addEventListener('click', compare);
+
+function compare() {
+  const status = document.getElementById('status');
+  status.className = 'status';
+  status.innerHTML = '';
+
+  // Gather sets
+  const namedSets = {};
+  let hasEmpty = false;
+  sets.forEach(s => {
+    const ids = parseIds(s.text);
+    if (ids.length === 0) hasEmpty = true;
+    namedSets[s.name || 'Unnamed'] = [...new Set(ids)];
+  });
+
+  if (hasEmpty) {
+    status.className = 'status error';
+    status.innerHTML = '<span>Each set must have at least one ID.</span>';
+    return;
+  }
+
+  // Compute locally
+  const names = sets.map(s => s.name || 'Unnamed');
+  const n = names.length;
+  const setsMap = {};
+  sets.forEach(s => {
+    setsMap[s.name || 'Unnamed'] = new Set(parseIds(s.text));
+  });
+
+  const regions = [];
+  for (let mask = 1; mask < (1 << n); mask++) {
+    const included = [];
+    const excluded = [];
+    for (let i = 0; i < n; i++) {
+      if (mask & (1 << i)) included.push(names[i]);
+      else excluded.push(names[i]);
+    }
+    let region = null;
+    for (const nm of included) {
+      if (region === null) region = new Set(setsMap[nm]);
+      else region = new Set([...region].filter(x => setsMap[nm].has(x)));
+    }
+    for (const nm of excluded) {
+      region = new Set([...region].filter(x => !setsMap[nm].has(x)));
+    }
+    regions.push({
+      mask,
+      included,
+      excluded,
+      ids: [...region].sort(),
+      count: region.size,
+    });
+  }
+
+  comparisonResult = { regions, names, setsMap };
+  renderVenn();
+}
+
+// ── Venn rendering ──
+function renderVenn() {
+  const wrapper = document.getElementById('vennWrapper');
+  wrapper.classList.add('visible');
+
+  const container = document.getElementById('vennContainer');
+  const n = comparisonResult.names.length;
+
+  if (n === 2) renderVenn2(container);
+  else if (n === 3) renderVenn3(container);
+  else if (n === 4) renderVenn4(container);
+
+  renderSummary();
+
+  // Scroll to results
+  wrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function svgEl(tag, attrs) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const [k, v] of Object.entries(attrs || {})) el.setAttribute(k, v);
+  return el;
+}
+
+// ── 2-set Venn ──
+function renderVenn2(container) {
+  const { regions, names } = comparisonResult;
+  const W = 500, H = 350;
+  const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, width: W, height: H });
+
+  const cx1 = 185, cx2 = 315, cy = 175, r = 120;
+
+  // Defs for clip paths
+  const defs = svgEl('defs');
+
+  // Circles as clip paths
+  const clip1 = svgEl('clipPath', { id: 'c2_0' });
+  clip1.appendChild(svgEl('circle', { cx: cx1, cy, r }));
+  defs.appendChild(clip1);
+  const clip2 = svgEl('clipPath', { id: 'c2_1' });
+  clip2.appendChild(svgEl('circle', { cx: cx2, cy, r }));
+  defs.appendChild(clip2);
+  svg.appendChild(defs);
+
+  // Region: only A (mask=1)
+  const fillA = getRegionFill(0, 1, 2);
+  const onlyA = svgEl('circle', { cx: cx1, cy, r, fill: fillA.fill, stroke: fillA.stroke, 'stroke-width': 2 });
+  onlyA.classList.add('venn-region');
+  onlyA.addEventListener('click', () => showRegion(1));
+  svg.appendChild(onlyA);
+
+  // Region: only B (mask=2)
+  const fillB = getRegionFill(1, 1, 2);
+  const onlyB = svgEl('circle', { cx: cx2, cy, r, fill: fillB.fill, stroke: fillB.stroke, 'stroke-width': 2 });
+  onlyB.classList.add('venn-region');
+  onlyB.addEventListener('click', () => showRegion(2));
+  svg.appendChild(onlyB);
+
+  // Intersection overlay (mask=3)
+  const inter = svgEl('rect', { x: 0, y: 0, width: W, height: H, fill: getOverlapFill(2, 2), 'clip-path': 'url(#c2_0)' });
+  const g = svgEl('g', { 'clip-path': 'url(#c2_1)' });
+  g.appendChild(inter);
+  g.classList.add('venn-region');
+  g.addEventListener('click', () => showRegion(3));
+  svg.appendChild(g);
+
+  // Labels — outside, above each circle, bold colored
+  const mode = getFillMode();
+  const lbl1Color = mode === 'colors' ? SET_COLORS[0] : themeText();
+  const lbl2Color = mode === 'colors' ? SET_COLORS[1] : themeText();
+  const label1 = svgEl('text', { x: cx1 - 60, y: 38, 'text-anchor': 'middle', 'font-size': '16', fill: lbl1Color, 'font-weight': '800' });
+  label1.classList.add('venn-label');
+  label1.textContent = names[0];
+  svg.appendChild(label1);
+
+  const label2 = svgEl('text', { x: cx2 + 60, y: 38, 'text-anchor': 'middle', 'font-size': '16', fill: lbl2Color, 'font-weight': '800' });
+  label2.classList.add('venn-label');
+  label2.textContent = names[1];
+  svg.appendChild(label2);
+
+  // Counts — perfectly centered using dominant-baseline, skip zeros
+  const r1 = regions.find(r => r.mask === 1);
+  const r2 = regions.find(r => r.mask === 2);
+  const r3 = regions.find(r => r.mask === 3);
+
+  if (r1 && r1.count > 0) {
+    const cnt1 = svgEl('text', { x: cx1 - 55, y: cy, 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': '18' });
+    cnt1.classList.add('venn-count');
+    cnt1.textContent = r1.count;
+    svg.appendChild(cnt1);
+  }
+
+  if (r2 && r2.count > 0) {
+    const cnt2 = svgEl('text', { x: cx2 + 55, y: cy, 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': '18' });
+    cnt2.classList.add('venn-count');
+    cnt2.textContent = r2.count;
+    svg.appendChild(cnt2);
+  }
+
+  if (r3 && r3.count > 0) {
+    const cnt3 = svgEl('text', { x: (cx1 + cx2) / 2, y: cy, 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': '18' });
+    cnt3.classList.add('venn-count');
+    cnt3.textContent = r3.count;
+    svg.appendChild(cnt3);
+  }
+
+  container.innerHTML = '';
+  container.appendChild(svg);
+}
+
+// ── 3-set Venn ──
+function renderVenn3(container) {
+  const { regions, names } = comparisonResult;
+  const W = 500, H = 420;
+  const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, width: W, height: H });
+
+  const cx1 = 200, cy1 = 170, cx2 = 300, cy2 = 170, cx3 = 250, cy3 = 255, r = 110;
+
+  const defs = svgEl('defs');
+  for (let i = 0; i < 3; i++) {
+    const cp = svgEl('clipPath', { id: `c3_${i}` });
+    const centers = [[cx1,cy1],[cx2,cy2],[cx3,cy3]];
+    cp.appendChild(svgEl('circle', { cx: centers[i][0], cy: centers[i][1], r }));
+    defs.appendChild(cp);
+  }
+  svg.appendChild(defs);
+
+  const centers = [[cx1,cy1],[cx2,cy2],[cx3,cy3]];
+
+  // Draw 3 circles
+  for (let i = 0; i < 3; i++) {
+    const f = getRegionFill(i, 1, 3);
+    const circle = svgEl('circle', { cx: centers[i][0], cy: centers[i][1], r, fill: f.fill, stroke: f.stroke, 'stroke-width': 2 });
+    circle.classList.add('venn-region');
+    circle.addEventListener('click', () => showRegion(1 << i));
+    svg.appendChild(circle);
+  }
+
+  // Intersection overlays for 2-set combos
+  const pairs = [[0,1,3],[0,2,5],[1,2,6]];
+  for (const [a, b, mask] of pairs) {
+    const g = svgEl('g', { 'clip-path': `url(#c3_${b})` });
+    const overlay = svgEl('circle', { cx: centers[a][0], cy: centers[a][1], r, fill: getOverlapFill(2, 3) });
+    g.appendChild(overlay);
+    g.classList.add('venn-region');
+    g.addEventListener('click', () => showRegion(mask));
+    svg.appendChild(g);
+  }
+
+  // Triple intersection (mask=7)
+  const g3 = svgEl('g', { 'clip-path': 'url(#c3_2)' });
+  const g3inner = svgEl('g', { 'clip-path': 'url(#c3_1)' });
+  const overlay3 = svgEl('circle', { cx: centers[0][0], cy: centers[0][1], r, fill: getOverlapFill(3, 3) });
+  g3inner.appendChild(overlay3);
+  g3.appendChild(g3inner);
+  g3.classList.add('venn-region');
+  g3.addEventListener('click', () => showRegion(7));
+  svg.appendChild(g3);
+
+  // Labels — outside each circle, bold colored
+  const mode3 = getFillMode();
+  const labelPos = [[cx1 - 70, 48], [cx2 + 70, 48], [cx3, H - 8]];
+  for (let i = 0; i < 3; i++) {
+    const lblColor = mode3 === 'colors' ? SET_COLORS[i] : themeText();
+    const lbl = svgEl('text', { x: labelPos[i][0], y: labelPos[i][1], 'text-anchor': 'middle', 'font-size': '16', fill: lblColor, 'font-weight': '800' });
+    lbl.classList.add('venn-label');
+    lbl.textContent = names[i];
+    svg.appendChild(lbl);
+  }
+
+  // Compute centroids by sampling, same approach as 4-6 set diagrams
+  const circleEllipses = centers.map(c => ({ cx: c[0], cy: c[1], rx: r, ry: r, angle: 0 }));
+  const centroids = computeRegionCentroids(circleEllipses, 3, W, H);
+
+  for (const region of regions) {
+    if (region.count === 0) continue;
+    let c = centroids[region.mask];
+    if (!c) {
+      let sx = 0, sy = 0, cnt = 0;
+      for (let i = 0; i < 3; i++) {
+        if (region.mask & (1 << i)) { sx += centers[i][0]; sy += centers[i][1]; cnt++; }
+      }
+      if (cnt > 0) c = { x: sx / cnt, y: sy / cnt };
+      else continue;
+    }
+    const txt = svgEl('text', { x: c.x, y: c.y, 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': '15' });
+    txt.classList.add('venn-count');
+    txt.textContent = region.count;
+    svg.appendChild(txt);
+  }
+
+  container.innerHTML = '';
+  container.appendChild(svg);
+}
+
+// ── Generic ellipse-based Venn for 4, 5, 6 sets ──
+// Uses hit-testing: click anywhere on the SVG, determine which ellipses
+// contain the click point, compute the mask, and show the right region.
+
+// Ellipse layout configs per set count
+function getEllipseLayout(n) {
+  if (n === 4) {
+    // Venny exact geometry (from bioinfogp.cnb.csic.es/tools/venny)
+    // Original coordinates: 400x400 canvas, ellipses 180x282
+    // Scaled up by 2.25x for our canvas
+    const scale = 2.25;
+    const W = Math.round(400 * scale), H = Math.round(400 * scale);
+    const rx = Math.round(90 * scale), ry = Math.round(141 * scale);
+    return {
+      W, H,
+      ellipses: [
+        { cx: Math.round(133 * scale), cy: Math.round(215 * scale), rx, ry, angle: -45 },  // Set 1 (blue in Venny)
+        { cx: Math.round(193 * scale), cy: Math.round(180 * scale), rx, ry, angle: -45 },  // Set 2 (yellow)
+        { cx: Math.round(207 * scale), cy: Math.round(180 * scale), rx, ry, angle:  45 },  // Set 3 (green)
+        { cx: Math.round(267 * scale), cy: Math.round(215 * scale), rx, ry, angle:  45 },  // Set 4 (red)
+      ],
+      // Compute label positions: find edge point of each ellipse in a chosen
+      // outward direction, then place label a fixed distance beyond that edge.
+      labelPositions: (() => {
+        const ells = [
+          { cx: Math.round(133 * scale), cy: Math.round(215 * scale), rx, ry, angle: -45 },
+          { cx: Math.round(193 * scale), cy: Math.round(180 * scale), rx, ry, angle: -45 },
+          { cx: Math.round(207 * scale), cy: Math.round(180 * scale), rx, ry, angle:  45 },
+          { cx: Math.round(267 * scale), cy: Math.round(215 * scale), rx, ry, angle:  45 },
+        ];
+        // Outward directions for each label (in SVG coords where y points down)
+        const dirs = [
+          { dx: -0.70, dy:  0.70 },  // Set 1: bottom-left
+          { dx: -0.25, dy: -0.97 },  // Set 2: mostly up, slightly left
+          { dx:  0.25, dy: -0.97 },  // Set 3: mostly up, slightly right
+          { dx:  0.70, dy:  0.70 },  // Set 4: bottom-right
+        ];
+        const gap = 30; // pixels beyond ellipse edge
+        return ells.map((e, i) => {
+          const d = dirs[i];
+          // Rotate direction into ellipse-local frame (undo ellipse rotation)
+          const rad = -e.angle * Math.PI / 180;
+          const cosR = Math.cos(rad), sinR = Math.sin(rad);
+          const ldx = d.dx * cosR - d.dy * sinR;
+          const ldy = d.dx * sinR + d.dy * cosR;
+          // Ray from center in local frame hits ellipse at parameter t
+          const t = 1 / Math.sqrt((ldx / e.rx) ** 2 + (ldy / e.ry) ** 2);
+          // Edge point in local frame
+          const ex = t * ldx, ey = t * ldy;
+          // Rotate back to global frame
+          const cosR2 = Math.cos(-rad), sinR2 = Math.sin(-rad);
+          const gx = ex * cosR2 - ey * sinR2 + e.cx;
+          const gy = ex * sinR2 + ey * cosR2 + e.cy;
+          return { x: gx + d.dx * gap, y: gy + d.dy * gap };
+        });
+      })()
+    };
+  }
+}
+
+// Test if a point (px, py) is inside a rotated ellipse
+function pointInEllipse(px, py, e) {
+  const rad = -e.angle * Math.PI / 180;
+  const cos = Math.cos(rad), sin = Math.sin(rad);
+  const dx = px - e.cx, dy = py - e.cy;
+  const rx2 = (cos * dx - sin * dy);
+  const ry2 = (sin * dx + cos * dy);
+  return (rx2 * rx2) / (e.rx * e.rx) + (ry2 * ry2) / (e.ry * e.ry) <= 1;
+}
+
+// Compute centroid of each Venn region by sampling a grid of points
+function computeRegionCentroids(ellipses, n, W, H) {
+  const step = 6; // sample every 6px — good balance of speed vs accuracy
+  const regionPoints = {}; // mask -> {sumX, sumY, count}
+
+  for (let y = 0; y < H; y += step) {
+    for (let x = 0; x < W; x += step) {
+      let mask = 0;
+      for (let i = 0; i < n; i++) {
+        if (pointInEllipse(x, y, ellipses[i])) mask |= (1 << i);
+      }
+      if (mask === 0) continue;
+      if (!regionPoints[mask]) regionPoints[mask] = { sumX: 0, sumY: 0, count: 0 };
+      regionPoints[mask].sumX += x;
+      regionPoints[mask].sumY += y;
+      regionPoints[mask].count++;
+    }
+  }
+
+  const centroids = {};
+  for (const [mask, data] of Object.entries(regionPoints)) {
+    centroids[parseInt(mask)] = {
+      x: data.sumX / data.count,
+      y: data.sumY / data.count,
+    };
+  }
+  return centroids;
+}
+
+function renderVenn4(container) { renderVennEllipse(container, 4); }
+
+function renderVennEllipse(container, n) {
+  const { regions, names } = comparisonResult;
+  const layout = getEllipseLayout(n);
+  const { W, H, ellipses, labelOffsets } = layout;
+
+  const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, width: W, height: H });
+
+  // Draw ellipses
+  for (let i = 0; i < n; i++) {
+    const e = ellipses[i];
+    const f = getRegionFill(i, 1, n);
+    const el = svgEl('ellipse', {
+      cx: e.cx, cy: e.cy, rx: e.rx, ry: e.ry,
+      fill: f.fill,
+      stroke: f.stroke,
+      'stroke-width': 2,
+      transform: `rotate(${e.angle} ${e.cx} ${e.cy})`
+    });
+    el.classList.add('venn-region');
+    svg.appendChild(el);
+  }
+
+  // Compute centroids for all regions
+  const centroids = computeRegionCentroids(ellipses, n, W, H);
+
+  // Labels: bold, colored, placed outside the ellipses
+  const modeE = getFillMode();
+  const diagramCx = W / 2, diagramCy = H / 2;
+  for (let i = 0; i < n; i++) {
+    let x, y;
+
+    x = layout.labelPositions[i].x;
+    y = layout.labelPositions[i].y;
+
+    x = Math.max(70, Math.min(W - 70, x));
+    y = Math.max(22, Math.min(H - 15, y));
+
+    const lbl = svgEl('text', {
+      x, y, 'text-anchor': 'middle',
+      'dominant-baseline': 'central',
+      'font-size': '16',
+      fill: modeE === 'colors' ? SET_COLORS[i] : themeText(),
+      'font-weight': '800',
+    });
+    lbl.classList.add('venn-label');
+    lbl.textContent = names[i];
+    svg.appendChild(lbl);
+  }
+
+  // Place count labels — skip regions with 0, perfectly centered
+  const fontSize = '14';
+
+  for (const r of regions) {
+    if (r.count === 0) continue;
+    let c = centroids[r.mask];
+    if (!c) {
+      let sx = 0, sy = 0, cnt = 0;
+      for (let i = 0; i < n; i++) {
+        if (r.mask & (1 << i)) {
+          sx += ellipses[i].cx;
+          sy += ellipses[i].cy;
+          cnt++;
+        }
+      }
+      if (cnt > 0) c = { x: sx / cnt, y: sy / cnt };
+      else continue;
+    }
+
+    const textLen = String(r.count).length;
+    const pillW = Math.max(26, textLen * 9 + 12);
+    const pillH = n <= 4 ? 22 : 19;
+    const pill = svgEl('rect', {
+      x: c.x - pillW / 2, y: c.y - pillH / 2,
+      width: pillW, height: pillH,
+      rx: pillH / 2,
+      fill: isLightTheme() ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.6)',
+    });
+    pill.style.pointerEvents = 'none';
+    svg.appendChild(pill);
+
+    const txt = svgEl('text', {
+      x: c.x, y: c.y,
+      'text-anchor': 'middle',
+      'dominant-baseline': 'central',
+      'font-size': fontSize
+    });
+    txt.classList.add('venn-count');
+    txt.textContent = r.count;
+    svg.appendChild(txt);
+  }
+
+  // Hit-test overlay: transparent rect that catches clicks
+  const hitArea = svgEl('rect', { x: 0, y: 0, width: W, height: H, fill: 'transparent' });
+  hitArea.style.cursor = 'pointer';
+  svg.appendChild(hitArea);
+
+  // Click handler: determine which ellipses contain the click point
+  hitArea.addEventListener('click', (evt) => {
+    const svgRect = svg.getBoundingClientRect();
+    const scaleX = W / svgRect.width;
+    const scaleY = H / svgRect.height;
+    const px = (evt.clientX - svgRect.left) * scaleX;
+    const py = (evt.clientY - svgRect.top) * scaleY;
+
+    let mask = 0;
+    for (let i = 0; i < n; i++) {
+      if (pointInEllipse(px, py, ellipses[i])) {
+        mask |= (1 << i);
+      }
+    }
+
+    if (mask > 0) showRegion(mask);
+  });
+
+  // Hint text
+  const hint = svgEl('text', { x: W / 2, y: H - 12, 'text-anchor': 'middle', 'font-size': '11', fill: '#71717a' });
+  hint.textContent = 'Click any region to see its IDs';
+  svg.appendChild(hint);
+
+  container.innerHTML = '';
+  container.appendChild(svg);
+}
+
+// ── Summary table ──
+function renderSummary() {
+  const { regions, names } = comparisonResult;
+  const tbody = document.getElementById('summaryBody');
+  tbody.innerHTML = '';
+
+  // Sort: most specific (most included) first, then by count desc
+  const sorted = [...regions].sort((a, b) => {
+    const bitsA = a.included.length, bitsB = b.included.length;
+    if (bitsA !== bitsB) return bitsB - bitsA;
+    return b.count - a.count;
+  });
+
+  sorted.forEach(r => {
+    const tr = document.createElement('tr');
+    const label = r.included.join(' ∩ ') + (r.excluded.length ? ` only` : '');
+    tr.innerHTML = `<td>${label}</td><td>${r.count}</td>`;
+    tr.addEventListener('click', () => {
+      tbody.querySelectorAll('tr').forEach(t => t.classList.remove('active'));
+      tr.classList.add('active');
+      showRegionData(r);
+    });
+    tbody.appendChild(tr);
+  });
+}
+
+// ── Show region by mask (from clicking Venn) ──
+function showRegion(mask) {
+  if (!comparisonResult) return;
+  const region = comparisonResult.regions.find(r => r.mask === mask);
+  if (region) showRegionData(region);
+
+  // Highlight in table
+  const tbody = document.getElementById('summaryBody');
+  const rows = tbody.querySelectorAll('tr');
+  const sorted = [...comparisonResult.regions].sort((a, b) => {
+    const bitsA = a.included.length, bitsB = b.included.length;
+    if (bitsA !== bitsB) return bitsB - bitsA;
+    return b.count - a.count;
+  });
+  rows.forEach((row, i) => {
+    row.classList.toggle('active', sorted[i] && sorted[i].mask === mask);
+  });
+}
+
+function showRegionData(region) {
+  const panel = document.getElementById('idListPanel');
+  const title = document.getElementById('idListTitle');
+  const subtitle = document.getElementById('idListSubtitle');
+  const box = document.getElementById('idListBox');
+
+  panel.classList.add('visible');
+  title.textContent = region.included.join(' ∩ ') + (region.excluded.length ? ' only' : '');
+  subtitle.textContent = `${region.count} ID${region.count !== 1 ? 's' : ''}`;
+  box.textContent = region.ids.join('\n');
+
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ── Copy IDs ──
+document.getElementById('idListCopyBtn').addEventListener('click', () => {
+  const box = document.getElementById('idListBox');
+  navigator.clipboard.writeText(box.textContent).then(() => {
+    const btn = document.getElementById('idListCopyBtn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy IDs', 1500);
+  });
+});
+
+// ── Prepare SVG clone for export (Illustrator-compatible) ──
+function prepareExportSvg(scale) {
+  const svg = document.querySelector('#vennContainer svg');
+  if (!svg) return null;
+
+  const clone = svg.cloneNode(true);
+  const vb = svg.getAttribute('viewBox').split(' ');
+  const vbW = parseInt(vb[2]), vbH = parseInt(vb[3]);
+
+  // Set explicit dimensions
+  clone.setAttribute('width', vbW * scale);
+  clone.setAttribute('height', vbH * scale);
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+
+  // Add background as first element
+  const bg = svgEl('rect', { x: 0, y: 0, width: vbW, height: vbH, fill: themeBg() });
+  clone.insertBefore(bg, clone.firstChild);
+
+  // Inline all styles directly on elements for Illustrator compatibility
+  clone.querySelectorAll('.venn-label').forEach(el => {
+    el.style.fontFamily = 'Inter, Helvetica, Arial, sans-serif';
+    el.style.fontWeight = '800';
+    el.style.pointerEvents = 'none';
+    el.removeAttribute('class');
+  });
+  const exportTextColor = themeText();
+  clone.querySelectorAll('.venn-count').forEach(el => {
+    el.style.fontFamily = "'JetBrains Mono', 'Courier New', monospace";
+    el.style.fontWeight = '500';
+    el.setAttribute('fill', exportTextColor);
+    el.style.pointerEvents = 'none';
+    el.removeAttribute('class');
+  });
+  clone.querySelectorAll('.venn-region').forEach(el => {
+    el.removeAttribute('class');
+  });
+
+  // Remove cursor, transition, and pointer-events styles that confuse Illustrator
+  clone.querySelectorAll('[style]').forEach(el => {
+    el.style.cursor = '';
+    el.style.transition = '';
+  });
+
+  // Remove the hit-area overlay rect (transparent, only for click handling)
+  clone.querySelectorAll('rect[fill="transparent"]').forEach(el => el.remove());
+
+  // Remove any <style> elements — everything is inlined
+  clone.querySelectorAll('style').forEach(el => el.remove());
+
+  return { clone, vbW, vbH };
+}
+
+// ── Export SVG ──
+document.getElementById('exportSvgBtn').addEventListener('click', () => {
+  const result = prepareExportSvg(1);
+  if (!result) return;
+
+  const serialized = new XMLSerializer().serializeToString(result.clone);
+  // Add XML declaration for Illustrator
+  const svgString = '<?xml version="1.0" encoding="UTF-8"?>\n' + serialized;
+  const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'venn_diagram.svg';
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+// ── Render SVG to canvas (shared by PNG and PDF export) ──
+function renderSvgToCanvas(scale, callback) {
+  const result = prepareExportSvg(scale);
+  if (!result) return;
+
+  const w = result.vbW * scale, h = result.vbH * scale;
+  const data = new XMLSerializer().serializeToString(result.clone);
+  const img = new Image();
+  img.onload = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, w, h);
+    callback(canvas, w, h);
+  };
+  img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(data)));
+}
+
+// ── Export PNG ──
+document.getElementById('exportPngBtn').addEventListener('click', () => {
+  renderSvgToCanvas(2, (canvas) => {
+    canvas.toBlob(blob => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'venn_diagram.png';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+  });
+});
+
+// ── Export PDF (minimal PDF with embedded image) ──
+document.getElementById('exportPdfBtn').addEventListener('click', () => {
+  renderSvgToCanvas(3, (canvas, w, h) => {
+    // Get JPEG data (smaller than PNG for embedding)
+    const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.95);
+    const jpegBase64 = jpegDataUrl.split(',')[1];
+    const jpegBytes = atob(jpegBase64);
+    const jpegLen = jpegBytes.length;
+
+    // PDF dimensions in points (72 pt/inch). Scale to fit A4 with margins.
+    const marginPt = 36; // 0.5 inch
+    const pageW = 595.28, pageH = 841.89; // A4
+    const availW = pageW - 2 * marginPt;
+    const availH = pageH - 2 * marginPt;
+    const imgAspect = w / h;
+    let imgW, imgH;
+    if (imgAspect > availW / availH) {
+      imgW = availW;
+      imgH = availW / imgAspect;
+    } else {
+      imgH = availH;
+      imgW = availH * imgAspect;
+    }
+    const imgX = marginPt + (availW - imgW) / 2;
+    const imgY = marginPt + (availH - imgH) / 2;
+
+    // Build minimal PDF 1.4
+    const offsets = [];
+    let pdf = '';
+    function obj(content) {
+      offsets.push(pdf.length);
+      pdf += offsets.length + ' 0 obj\n' + content + '\nendobj\n';
+    }
+
+    pdf = '%PDF-1.4\n%\xE2\xE3\xCF\xD3\n';
+
+    // 1: Catalog
+    obj('<< /Type /Catalog /Pages 2 0 R >>');
+    // 2: Pages
+    obj('<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
+    // 3: Page
+    obj(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW} ${pageH}] /Contents 4 0 R /Resources << /XObject << /Img 5 0 R >> >> >>`);
+    // 4: Content stream (draw image)
+    const contentStream = `q ${imgW} 0 0 ${imgH} ${imgX} ${imgY} cm /Img Do Q`;
+    obj('<< /Length ' + contentStream.length + ' >>\nstream\n' + contentStream + '\nendstream');
+    // 5: Image XObject
+    const imgDict = `<< /Type /XObject /Subtype /Image /Width ${w} /Height ${h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpegLen} >>`;
+    offsets.push(pdf.length);
+    pdf += '5 0 obj\n' + imgDict + '\nstream\n';
+    // Convert to binary array
+    const pdfBeforeImg = pdf;
+    const pdfAfterImg = '\nendstream\nendobj\n';
+
+    // Build xref and trailer
+    const numObjs = 5;
+    let xrefStr = '';
+    // We need to compute offsets after inserting binary data
+    const beforeLen = new TextEncoder().encode(pdfBeforeImg).length;
+    const afterImgStart = beforeLen + jpegLen;
+
+    // Rebuild offsets for xref: objects 1-4 are text-only, object 5 starts at offsets[4]
+    const finalOffsets = offsets.map(o => new TextEncoder().encode(pdf.substring(0, o)).length);
+    // But object 5 offset needs the text encoder too
+    finalOffsets[4] = new TextEncoder().encode(pdfBeforeImg.substring(0, offsets[4])).length;
+
+    const xrefOffset = afterImgStart + new TextEncoder().encode(pdfAfterImg).length;
+
+    xrefStr += 'xref\n0 ' + (numObjs + 1) + '\n';
+    xrefStr += '0000000000 65535 f \n';
+    for (let i = 0; i < numObjs; i++) {
+      xrefStr += String(finalOffsets[i]).padStart(10, '0') + ' 00000 n \n';
+    }
+    xrefStr += 'trailer\n<< /Size ' + (numObjs + 1) + ' /Root 1 0 R >>\nstartxref\n' + xrefOffset + '\n%%EOF';
+
+    // Assemble final PDF as binary
+    const beforeBytes = new TextEncoder().encode(pdfBeforeImg);
+    const afterBytes = new TextEncoder().encode(pdfAfterImg + xrefStr);
+    const pdfArray = new Uint8Array(beforeBytes.length + jpegLen + afterBytes.length);
+    pdfArray.set(beforeBytes, 0);
+    for (let i = 0; i < jpegLen; i++) pdfArray[i + beforeBytes.length] = jpegBytes.charCodeAt(i);
+    pdfArray.set(afterBytes, beforeBytes.length + jpegLen);
+
+    const blob = new Blob([pdfArray], { type: 'application/pdf' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'venn_diagram.pdf';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+});
+
+// ── Export CSV ──
+document.getElementById('exportCsvBtn').addEventListener('click', () => {
+  if (!comparisonResult) return;
+
+  let csv = 'Region,Count,IDs\n';
+  for (const r of comparisonResult.regions) {
+    const label = r.included.join(' ∩ ') + (r.excluded.length ? ' only' : '');
+    const ids = r.ids.join('; ');
+    csv += `"${label}",${r.count},"${ids}"\n`;
+  }
+
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'venn_results.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+// ── Multi-set file upload ──
+const multiDropzone = document.getElementById('multiDropzone');
+const multiFileInput = document.getElementById('multiFileInput');
+
+multiDropzone.addEventListener('click', () => multiFileInput.click());
+multiDropzone.addEventListener('dragover', e => {
+  e.preventDefault();
+  multiDropzone.classList.add('dragover');
+});
+multiDropzone.addEventListener('dragleave', () => multiDropzone.classList.remove('dragover'));
+multiDropzone.addEventListener('drop', e => {
+  e.preventDefault();
+  multiDropzone.classList.remove('dragover');
+  if (e.dataTransfer.files.length) loadMultiSetFile(e.dataTransfer.files[0]);
+});
+multiFileInput.addEventListener('change', () => {
+  if (multiFileInput.files.length) loadMultiSetFile(multiFileInput.files[0]);
+});
+
+function loadMultiSetFile(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    const text = reader.result;
+    const parsed = parseMultiSetFile(text, file.name);
+    if (!parsed) {
+      const status = document.getElementById('status');
+      status.className = 'status error';
+      status.innerHTML = '<span>Could not parse file. Expected TSV/CSV with a header row and 2\u20136 columns.</span>';
+      return;
+    }
+
+    // Update dropzone appearance
+    multiDropzone.classList.add('has-file');
+    multiDropzone.querySelector('p').innerHTML = `<span class="multi-filename">${file.name}</span>`;
+
+    // Replace sets with parsed data
+    sets = [];
+    const names = Object.keys(parsed);
+    if (names.length < 2 || names.length > 4) {
+      const status = document.getElementById('status');
+      status.className = 'status error';
+      status.innerHTML = `<span>File has ${names.length} column(s). Need between 2 and 4.</span>`;
+      return;
+    }
+
+    names.forEach(name => {
+      const id = Date.now() + Math.random();
+      sets.push({ id, name, text: parsed[name].join('\n') });
+    });
+    renderSets();
+
+    // Clear any previous error
+    const status = document.getElementById('status');
+    status.className = 'status';
+    status.innerHTML = '';
+  };
+  reader.readAsText(file);
+}
+
+function parseMultiSetFile(text, filename) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+  if (lines.length < 2) return null;
+
+  // Detect delimiter: tab, comma, or semicolon
+  let delim = '\t';
+  const firstLine = lines[0];
+  if (firstLine.includes('\t')) delim = '\t';
+  else if (firstLine.includes(',')) delim = ',';
+  else if (firstLine.includes(';')) delim = ';';
+
+  const headers = lines[0].split(delim).map(h => h.trim().replace(/^["']|["']$/g, ''));
+  const numCols = headers.length;
+  if (numCols < 2) return null;
+
+  const result = {};
+  headers.forEach(h => result[h] = []);
+
+  for (let i = 1; i < lines.length; i++) {
+    const cols = lines[i].split(delim).map(c => c.trim().replace(/^["']|["']$/g, ''));
+    for (let j = 0; j < numCols; j++) {
+      const val = cols[j] || '';
+      if (val.length > 0) {
+        result[headers[j]].push(val);
+      }
+    }
+  }
+
+  return result;
+}
+
+// ── Theme toggle ──
+document.getElementById('themeToggle').addEventListener('click', () => {
+  const html = document.documentElement;
+  const current = html.getAttribute('data-theme');
+  const next = current === 'light' ? 'dark' : 'light';
+  html.setAttribute('data-theme', next);
+  localStorage.setItem('vennapp-theme', next);
+  // Re-render Venn if visible (label colors may need updating)
+  if (comparisonResult) renderVenn();
+});
+
+// Restore saved theme
+(() => {
+  const saved = localStorage.getItem('vennapp-theme');
+  if (saved === 'light') document.documentElement.setAttribute('data-theme', 'light');
+})();
+
+// ── Init ──
+init();
+</script>
+</body>
+</html>

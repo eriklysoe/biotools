@@ -1,0 +1,4 @@
+flask>=3.0
+gunicorn>=22.0
+biopython>=1.84
+numpy>=1.26

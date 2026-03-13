@@ -1,0 +1,12 @@
+services:
+  biotools:
+    build: .
+    container_name: biotools
+    restart: unless-stopped
+    ports:
+      - "5590:5590"
+    environment:
+      - MAX_UPLOAD_MB=50
+      - BASE_URL=${BASE_URL:-http://localhost:5590}
+    volumes:
+      - ./data/tmp:/app/tmp
