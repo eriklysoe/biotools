@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BioTools – PCoA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.plot.ly/plotly-2.35.0.min.js"></script>
+  <style>
+    :root {
+      --bg: #09090b;
+      --surface: rgba(255,255,255,0.03);
+      --surface-hover: rgba(255,255,255,0.06);
+      --surface-solid: #131316;
+      --border: rgba(255,255,255,0.08);
+      --border-hover: rgba(255,255,255,0.15);
+      --text: #fafafa;
+      --text-secondary: #a1a1aa;
+      --text-muted: #71717a;
+      --accent: #6366f1;
+      --accent-light: #818cf8;
+      --accent-glow: rgba(99,102,241,0.15);
+      --accent-glow-strong: rgba(99,102,241,0.25);
+      --success: #22c55e;
+      --success-glow: rgba(34,197,94,0.15);
+      --error: #ef4444;
+      --error-glow: rgba(239,68,68,0.15);
+      --warning: #f59e0b;
+      --warning-glow: rgba(245,158,11,0.15);
+      --radius: 12px;
+      --radius-lg: 16px;
+      --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    [data-theme="light"] {
+      --bg: #f5f5f5;
+      --surface: rgba(0,0,0,0.03);
+      --surface-hover: rgba(0,0,0,0.06);
+      --surface-solid: #ffffff;
+      --border: rgba(0,0,0,0.12);
+      --border-hover: rgba(0,0,0,0.20);
+      --text: #18181b;
+      --text-secondary: #52525b;
+      --text-muted: #71717a;
+      --accent: #6366f1;
+      --accent-light: #4f46e5;
+      --accent-glow: rgba(99,102,241,0.10);
+      --accent-glow-strong: rgba(99,102,241,0.18);
+      --success: #16a34a;
+      --success-glow: rgba(22,163,74,0.10);
+      --error: #dc2626;
+      --error-glow: rgba(220,38,38,0.08);
+      --warning: #d97706;
+      --warning-glow: rgba(217,119,6,0.10);
+    }
+
+    [data-theme="light"] body::before {
+      background-image:
+        linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px);
+    }
+    [data-theme="light"] body::after {
+      background: radial-gradient(circle, rgba(99,102,241,0.06) 0%, transparent 70%);
+    }
+    [data-theme="light"] header h1 span {
+      background: linear-gradient(135deg, var(--accent), #7c3aed);
+      -webkit-background-clip: text; background-clip: text;
+    }
+    [data-theme="light"] .topnav { background: rgba(245,245,245,0.85); }
+    [data-theme="light"] .status.error {
+      background: var(--error-glow); border-color: rgba(220,38,38,0.25); color: #991b1b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 3rem 1.25rem;
+      padding-top: 4.5rem;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+      background-size: 64px 64px;
+      pointer-events: none; z-index: 0;
+    }
+
+    body::after {
+      content: '';
+      position: fixed; top: -200px; left: 50%; transform: translateX(-50%);
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%);
+      pointer-events: none; z-index: 0;
+    }
+
+    .topnav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; gap: 0.25rem;
+      padding: 0.5rem 1.25rem;
+      background: rgba(9,9,11,0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    .topnav-brand {
+      font-size: 0.8125rem; font-weight: 700; color: var(--text);
+      margin-right: 1rem; text-decoration: none; letter-spacing: -0.02em;
+    }
+    .topnav-brand span {
+      background: linear-gradient(135deg, var(--accent-light), #c084fc);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .topnav a.nav-link {
+      font-size: 0.75rem; font-weight: 500; color: var(--text-muted);
+      text-decoration: none; padding: 0.375rem 0.75rem; border-radius: 8px;
+      transition: all var(--transition);
+    }
+    .topnav a.nav-link:hover { color: var(--text); background: var(--surface-hover); }
+    .topnav a.nav-link.active { color: var(--accent-light); background: var(--accent-glow); }
+
+    .container {
+      position: relative; z-index: 1; width: 100%; max-width: 900px;
+      display: flex; flex-direction: column; align-items: center;
+    }
+
+    header { text-align: center; margin-bottom: 2.5rem; }
+    .logo { display: inline-flex; align-items: center; gap: 0.6rem; margin-bottom: 0.75rem; }
+    .logo-icon {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, var(--accent), #a78bfa);
+      border-radius: 10px; display: flex; align-items: center; justify-content: center;
+    }
+    .logo-icon svg { width: 22px; height: 22px; stroke: white; fill: none; }
+    header h1 { font-size: 1.75rem; font-weight: 700; letter-spacing: -0.03em; }
+    header h1 span {
+      background: linear-gradient(135deg, var(--accent-light), #c084fc);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    header p { color: var(--text-muted); margin-top: 0.5rem; font-size: 0.875rem; }
+
+    .card {
+      background: var(--surface); backdrop-filter: blur(12px);
+      border: 1px solid var(--border); border-radius: var(--radius-lg);
+      padding: 1.5rem; width: 100%; margin-bottom: 1rem;
+      transition: border-color var(--transition);
+    }
+    .card:hover { border-color: var(--border-hover); }
+    .card-title {
+      font-size: 0.6875rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 1rem;
+    }
+
+    .upload-row { display: flex; gap: 1rem; }
+    .upload-row > * { flex: 1; }
+
+    .dropzone {
+      border: 1.5px dashed rgba(255,255,255,0.12); border-radius: var(--radius);
+      padding: 1.75rem 1rem; text-align: center; cursor: pointer;
+      transition: all var(--transition); position: relative; overflow: hidden;
+    }
+    .dropzone::before {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(circle at center, var(--accent-glow) 0%, transparent 70%);
+      opacity: 0; transition: opacity var(--transition);
+    }
+    .dropzone:hover::before, .dropzone.dragover::before { opacity: 1; }
+    .dropzone:hover, .dropzone.dragover { border-color: var(--accent); }
+    .dropzone.has-file { border-color: var(--success); border-style: solid; }
+    .dropzone.has-file::before {
+      background: radial-gradient(circle at center, var(--success-glow) 0%, transparent 70%);
+      opacity: 1;
+    }
+    .dropzone-content { position: relative; z-index: 1; }
+    .dropzone-icon {
+      width: 40px; height: 40px; margin: 0 auto 0.75rem; border-radius: 10px;
+      background: rgba(255,255,255,0.05);
+      display: flex; align-items: center; justify-content: center;
+      transition: all var(--transition);
+    }
+    .dropzone:hover .dropzone-icon { background: var(--accent-glow); }
+    .dropzone.has-file .dropzone-icon { background: var(--success-glow); }
+    .dropzone-icon svg { width: 20px; height: 20px; stroke: var(--text-muted); transition: stroke var(--transition); }
+    .dropzone:hover .dropzone-icon svg { stroke: var(--accent-light); }
+    .dropzone.has-file .dropzone-icon svg { stroke: var(--success); }
+    .dropzone p { color: var(--text-secondary); font-size: 0.75rem; }
+    .dropzone .filename { color: var(--text); font-weight: 600; font-size: 0.8rem; word-break: break-all; }
+    .dropzone .filesize { color: var(--text-muted); font-size: 0.7rem; margin-top: 0.15rem; }
+    .dropzone .optional-tag { color: var(--text-muted); font-size: 0.65rem; margin-top: 0.25rem; }
+    .dropzone input { display: none; }
+
+    .row { display: flex; gap: 0.75rem; }
+    .row > * { flex: 1; }
+
+    label.field {
+      display: flex; flex-direction: column; gap: 0.4rem;
+      font-size: 0.75rem; color: var(--text-muted); font-weight: 500;
+    }
+
+    select {
+      appearance: none; background: var(--surface-solid);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      color: var(--text); padding: 0.625rem 0.875rem;
+      font-size: 0.8125rem; font-family: 'Inter', sans-serif; cursor: pointer;
+      transition: all var(--transition);
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2371717a'%3E%3Cpath d='M6 8.5L1 3.5h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 0.75rem center;
+      padding-right: 2.25rem;
+    }
+    select:hover { border-color: var(--border-hover); background-color: var(--surface-hover); }
+    select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+    select option { background: var(--surface-solid); color: var(--text); }
+
+    .toggle-row {
+      display: flex; gap: 1.5rem; align-items: center; margin-top: 0.75rem;
+    }
+    .toggle-label {
+      display: flex; align-items: center; gap: 0.5rem;
+      font-size: 0.75rem; color: var(--text-muted); cursor: pointer;
+    }
+    .toggle-switch {
+      position: relative; width: 36px; height: 20px;
+      background: var(--surface-solid); border: 1px solid var(--border);
+      border-radius: 10px; transition: all var(--transition); cursor: pointer;
+    }
+    .toggle-switch::after {
+      content: ''; position: absolute; top: 2px; left: 2px;
+      width: 14px; height: 14px; border-radius: 50%;
+      background: var(--text-muted); transition: all var(--transition);
+    }
+    .toggle-switch.on { background: var(--accent); border-color: var(--accent); }
+    .toggle-switch.on::after { left: 18px; background: white; }
+
+    .btn {
+      width: 100%; padding: 0.8rem; border: none; border-radius: var(--radius);
+      background: linear-gradient(135deg, var(--accent), #7c3aed);
+      color: #fff; font-size: 0.875rem; font-weight: 600;
+      font-family: 'Inter', sans-serif; cursor: pointer;
+      transition: all var(--transition); position: relative; overflow: hidden; margin-top: 0.25rem;
+    }
+    .btn::before {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+      opacity: 0; transition: opacity var(--transition);
+    }
+    .btn:hover:not(:disabled)::before { opacity: 1; }
+    .btn:hover:not(:disabled) { box-shadow: 0 0 24px var(--accent-glow-strong); transform: translateY(-1px); }
+    .btn:active:not(:disabled) { transform: translateY(0) scale(0.99); }
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; background: rgba(255,255,255,0.08); color: var(--text-muted); }
+
+    .status {
+      width: 100%; padding: 0.75rem 1rem; border-radius: var(--radius);
+      font-size: 0.8125rem; margin-top: 0.75rem; display: none;
+      align-items: center; gap: 0.5rem;
+    }
+    .status.error { display: flex; background: var(--error-glow); border: 1px solid rgba(239,68,68,0.25); color: #fca5a5; }
+    .status.success { display: flex; background: var(--success-glow); border: 1px solid rgba(34,197,94,0.25); color: #86efac; }
+    .status.loading { display: flex; background: var(--accent-glow); border: 1px solid rgba(99,102,241,0.25); color: var(--accent-light); }
+    .status.warning { display: flex; background: var(--warning-glow); border: 1px solid rgba(245,158,11,0.25); color: #fbbf24; }
+    .status-icon { flex-shrink: 0; width: 16px; height: 16px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .status.loading .status-icon { animation: spin 1s linear infinite; }
+
+    .result-section { display: none; width: 100%; margin-top: 1rem; }
+    .result-section.visible { display: block; }
+
+    .meta-row { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+    .meta-badge {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      padding: 0.35rem 0.75rem; border-radius: 8px; font-size: 0.7rem; font-weight: 500;
+      background: var(--surface); border: 1px solid var(--border); color: var(--text-secondary);
+    }
+    .meta-badge strong { color: var(--text); }
+
+    #plotContainer {
+      width: 100%; min-height: 450px; border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .download-row { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
+    .btn-secondary {
+      flex: 1; padding: 0.6rem 1rem; border: 1px solid var(--border);
+      border-radius: var(--radius); background: var(--surface);
+      color: var(--text-secondary); font-size: 0.8125rem; font-weight: 500;
+      font-family: 'Inter', sans-serif; cursor: pointer; transition: all var(--transition);
+    }
+    .btn-secondary:hover { background: var(--surface-hover); border-color: var(--border-hover); color: var(--text); }
+
+    .collapsible { width: 100%; margin-top: 1rem; }
+    .collapsible-trigger {
+      background: none; border: 1px solid var(--border); border-radius: var(--radius);
+      color: var(--text-secondary); cursor: pointer; font-size: 0.75rem;
+      font-family: 'Inter', sans-serif; font-weight: 500; padding: 0.625rem 1rem;
+      width: 100%; text-align: left; display: flex; align-items: center;
+      justify-content: space-between; transition: all var(--transition);
+    }
+    .collapsible-trigger:hover { background: var(--surface); border-color: var(--border-hover); color: var(--text); }
+    .collapsible-trigger.open { border-radius: var(--radius) var(--radius) 0 0; background: var(--surface); border-bottom-color: transparent; }
+    .collapsible-chevron { width: 14px; height: 14px; stroke: currentColor; transition: transform var(--transition); }
+    .collapsible-trigger.open .collapsible-chevron { transform: rotate(180deg); }
+    .collapsible-body {
+      display: none; background: var(--surface); border: 1px solid var(--border);
+      border-top: none; border-radius: 0 0 var(--radius) var(--radius); overflow: hidden;
+    }
+    .collapsible-body.open { display: block; }
+
+    .dm-table-wrap { max-height: 320px; overflow: auto; }
+    .dm-table-wrap::-webkit-scrollbar { width: 4px; height: 4px; }
+    .dm-table-wrap::-webkit-scrollbar-track { background: transparent; }
+    .dm-table-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    .dm-table {
+      width: max-content; border-collapse: collapse; font-size: 0.7rem;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .dm-table th, .dm-table td { padding: 0.4rem 0.6rem; text-align: right; white-space: nowrap; }
+    .dm-table th {
+      color: var(--text-muted); font-weight: 600; font-size: 0.65rem;
+      position: sticky; top: 0; background: var(--surface-solid);
+      border-bottom: 1px solid var(--border);
+    }
+    .dm-table th:first-child { text-align: left; position: sticky; left: 0; z-index: 2; }
+    .dm-table td:first-child {
+      color: var(--accent-light); text-align: left; font-weight: 500;
+      position: sticky; left: 0; background: var(--surface-solid);
+    }
+    .dm-table tr { border-bottom: 1px solid rgba(255,255,255,0.04); }
+    .dm-table td { color: var(--text-secondary); }
+
+    .api-code {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; line-height: 1.7;
+      color: var(--text-secondary); padding: 1rem 1.25rem; overflow-x: auto; white-space: pre;
+    }
+    .api-code .cmd { color: var(--success); }
+    .api-code .flag { color: var(--accent-light); }
+    .api-code .str { color: #f59e0b; }
+    .api-code .url { color: var(--text-muted); }
+
+    .theme-toggle {
+      position: fixed; top: 1rem; right: 1rem; z-index: 100;
+      background: var(--surface-solid); border: 1px solid var(--border);
+      border-radius: 50%; width: 36px; height: 36px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: all var(--transition); color: var(--text-muted);
+    }
+    .theme-toggle:hover { border-color: var(--accent); color: var(--accent-light); background: var(--accent-glow); }
+    .theme-toggle svg { width: 18px; height: 18px; }
+    .theme-toggle .icon-sun { display: none; }
+    [data-theme="light"] .theme-toggle .icon-moon { display: none; }
+    [data-theme="light"] .theme-toggle .icon-sun { display: block; }
+
+    footer {
+      margin-top: 2.5rem; color: var(--text-muted); font-size: 0.6875rem;
+      text-align: center; display: flex; align-items: center; gap: 0.5rem;
+    }
+    footer span { opacity: 0.3; }
+    footer a { color: var(--text-secondary); text-decoration: none; transition: color var(--transition); }
+    footer a:hover { color: var(--text); }
+
+    @media (max-width: 600px) {
+      body { padding: 1.5rem 1rem; padding-top: 4rem; }
+      .upload-row { flex-direction: column; }
+      .row { flex-direction: column; }
+      .download-row { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="topnav">
+    <a class="topnav-brand" href="/"><span>Bio</span>Tools</a>
+    <a class="nav-link" href="/seqconvert">SeqConvert</a>
+    <a class="nav-link" href="/venn">Venn Diagram</a>
+    <a class="nav-link" href="/phylotree">PhyloTree</a>
+    <a class="nav-link active" href="/pcoa">PCoA</a>
+  </nav>
+  <button class="theme-toggle" id="themeToggle" title="Toggle light/dark mode">
+    <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0112.478 3.34a9.75 9.75 0 109.274 11.662z"/></svg>
+    <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1.5M12 19.5V21M4.219 4.219l1.061 1.061M17.72 17.72l1.06 1.06M3 12h1.5M19.5 12H21M4.219 19.781l1.061-1.061M17.72 6.28l1.06-1.06"/><circle cx="12" cy="12" r="4.5"/></svg>
+  </button>
+
+  <div class="container">
+    <header>
+      <div class="logo">
+        <div class="logo-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="7.5" cy="7.5" r="2"/>
+            <circle cx="16.5" cy="7.5" r="2"/>
+            <circle cx="7.5" cy="16.5" r="2"/>
+            <circle cx="16.5" cy="16.5" r="2"/>
+            <line x1="3" y1="21" x2="21" y2="3" stroke-dasharray="2 3"/>
+          </svg>
+        </div>
+        <h1><span>PCoA</span></h1>
+      </div>
+      <p>Principal Coordinates Analysis for community data</p>
+    </header>
+
+    <!-- File uploads -->
+    <div class="card">
+      <div class="card-title">Data input</div>
+      <div class="upload-row">
+        <div class="dropzone" id="dzAbundance">
+          <div class="dropzone-content">
+            <div class="dropzone-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
+              </svg>
+            </div>
+            <p>Abundance table (CSV/TSV)</p>
+          </div>
+          <input type="file" id="abundanceInput" accept=".csv,.tsv,.txt,.tab">
+        </div>
+        <div class="dropzone" id="dzMetadata">
+          <div class="dropzone-content">
+            <div class="dropzone-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
+              </svg>
+            </div>
+            <p>Metadata file (CSV/TSV)</p>
+            <p class="optional-tag">Optional</p>
+          </div>
+          <input type="file" id="metadataInput" accept=".csv,.tsv,.txt,.tab">
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings -->
+    <div class="card">
+      <div class="card-title">Analysis settings</div>
+      <div class="row" style="margin-bottom:0.75rem">
+        <label class="field">
+          Distance metric
+          <select id="distMetric">
+            {% for key, label in distance_metrics.items() %}
+            <option value="{{ key }}" {% if key == 'braycurtis' %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="field">
+          Normalisation
+          <select id="normMethod">
+            {% for key, label in normalisation_methods.items() %}
+            <option value="{{ key }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </div>
+      <div class="row" id="metaControlsRow" style="display:none; margin-bottom:0.75rem">
+        <label class="field">
+          Colour by
+          <select id="colourBy"><option value="">None</option></select>
+        </label>
+        <label class="field">
+          Shape by
+          <select id="shapeBy"><option value="">None</option></select>
+        </label>
+      </div>
+      <div class="toggle-row">
+        <label class="toggle-label">
+          <div class="toggle-switch" id="toggle3d"></div>
+          3D plot
+        </label>
+        <label class="toggle-label">
+          <div class="toggle-switch on" id="toggleLabels"></div>
+          Sample labels
+        </label>
+      </div>
+    </div>
+
+    <button class="btn" id="runBtn" disabled>Run PCoA</button>
+
+    <div class="status" id="status"></div>
+
+    <!-- Results -->
+    <div class="result-section" id="resultSection">
+      <div class="card">
+        <div class="card-title">PCoA plot</div>
+        <div class="meta-row" id="metaRow"></div>
+        <div id="plotContainer"></div>
+        <div class="download-row">
+          <button class="btn-secondary" id="dlCoords">Download Coordinates CSV</button>
+          <button class="btn-secondary" id="dlDist">Download Distance Matrix CSV</button>
+        </div>
+      </div>
+
+      <!-- Distance matrix -->
+      <div class="collapsible">
+        <button class="collapsible-trigger" id="dmToggle">
+          Distance matrix
+          <svg class="collapsible-chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/>
+          </svg>
+        </button>
+        <div class="collapsible-body" id="dmBody">
+          <div class="dm-table-wrap" id="dmTableWrap"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- API hint -->
+    <div class="collapsible">
+      <button class="collapsible-trigger" id="apiToggle">
+        API / CLI usage
+        <svg class="collapsible-chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/>
+        </svg>
+      </button>
+      <div class="collapsible-body" id="apiBody">
+        <div class="api-code" id="apiCode"></div>
+      </div>
+    </div>
+
+    <footer>
+      BioTools – PCoA
+      <span>&middot;</span>
+      scikit-bio &amp; Plotly.js
+    </footer>
+  </div>
+
+<script>
+  // ── Elements ──
+  const dzAbundance = document.getElementById('dzAbundance');
+  const dzMetadata = document.getElementById('dzMetadata');
+  const abundanceInput = document.getElementById('abundanceInput');
+  const metadataInput = document.getElementById('metadataInput');
+  const runBtn = document.getElementById('runBtn');
+  const statusEl = document.getElementById('status');
+  const resultSection = document.getElementById('resultSection');
+  const plotContainer = document.getElementById('plotContainer');
+  const metaRow = document.getElementById('metaRow');
+  const metaControlsRow = document.getElementById('metaControlsRow');
+  const colourBy = document.getElementById('colourBy');
+  const shapeBy = document.getElementById('shapeBy');
+  const distMetric = document.getElementById('distMetric');
+  const normMethod = document.getElementById('normMethod');
+
+  let abundanceFile = null;
+  let metadataFile = null;
+  let currentData = null;
+  let show3d = false;
+  let showLabels = true;
+
+  // ── Dropzone helpers ──
+  function setupDropzone(dz, input, onFile) {
+    dz.addEventListener('click', () => input.click());
+    dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+    dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+    dz.addEventListener('drop', e => {
+      e.preventDefault(); dz.classList.remove('dragover');
+      if (e.dataTransfer.files.length) onFile(e.dataTransfer.files[0], dz);
+    });
+    input.addEventListener('change', () => {
+      if (input.files.length) onFile(input.files[0], dz);
+    });
+  }
+
+  function showFileInDz(file, dz) {
+    dz.classList.add('has-file');
+    const size = file.size < 1024*1024
+      ? (file.size/1024).toFixed(1)+' KB'
+      : (file.size/(1024*1024)).toFixed(2)+' MB';
+    const content = dz.querySelector('.dropzone-content');
+    const pEl = content.querySelector('p');
+    pEl.innerHTML = `<span class="filename">${file.name}</span><span class="filesize">${size}</span>`;
+  }
+
+  setupDropzone(dzAbundance, abundanceInput, (f, dz) => {
+    abundanceFile = f; showFileInDz(f, dz); runBtn.disabled = false; clearStatus();
+  });
+  setupDropzone(dzMetadata, metadataInput, (f, dz) => {
+    metadataFile = f; showFileInDz(f, dz);
+  });
+
+  // ── Toggles ──
+  document.getElementById('toggle3d').addEventListener('click', function() {
+    show3d = !show3d; this.classList.toggle('on', show3d);
+    if (currentData) renderPlot();
+  });
+  document.getElementById('toggleLabels').addEventListener('click', function() {
+    showLabels = !showLabels; this.classList.toggle('on', showLabels);
+    if (currentData) renderPlot();
+  });
+
+  // ── Run PCoA ──
+  runBtn.addEventListener('click', async () => {
+    runBtn.disabled = true;
+    showStatus('loading', 'Computing PCoA\u2026');
+    resultSection.classList.remove('visible');
+
+    const form = new FormData();
+    form.append('abundance_file', abundanceFile);
+    if (metadataFile) form.append('metadata_file', metadataFile);
+    form.append('distance_metric', distMetric.value);
+    form.append('normalisation', normMethod.value);
+
+    try {
+      const resp = await fetch('/api/pcoa', { method: 'POST', body: form });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
+
+      currentData = data;
+
+      // Show warnings if any
+      if (data.warnings && data.warnings.length) {
+        showStatus('warning', data.warnings.join(' | '));
+      } else {
+        showStatus('success', `PCoA complete — ${data.num_samples} samples, ${data.num_features} features`);
+      }
+
+      populateMetaControls(data);
+      displayResult(data);
+    } catch (e) {
+      showStatus('error', e.message);
+    } finally {
+      runBtn.disabled = false;
+    }
+  });
+
+  // ── Populate metadata dropdowns ──
+  function populateMetaControls(data) {
+    colourBy.innerHTML = '<option value="">None</option>';
+    shapeBy.innerHTML = '<option value="">None</option>';
+    if (data.metadata_columns && data.metadata_columns.length) {
+      data.metadata_columns.forEach(col => {
+        colourBy.innerHTML += `<option value="${col}">${col}</option>`;
+        shapeBy.innerHTML += `<option value="${col}">${col}</option>`;
+      });
+      metaControlsRow.style.display = '';
+    } else {
+      metaControlsRow.style.display = 'none';
+    }
+  }
+
+  colourBy.addEventListener('change', () => { if (currentData) renderPlot(); });
+  shapeBy.addEventListener('change', () => { if (currentData) renderPlot(); });
+
+  // ── Display result ──
+  function displayResult(data) {
+    // Meta badges
+    metaRow.innerHTML = '';
+    const ve = data.variance_explained;
+    const badges = [
+      { l: 'Metric', v: data.distance_metric },
+      { l: 'Samples', v: data.num_samples },
+      { l: 'Features', v: data.num_features },
+      { l: 'PC1', v: ve[0]+'%' },
+      { l: 'PC2', v: ve[1]+'%' },
+    ];
+    if (ve.length > 2) badges.push({ l: 'PC3', v: ve[2]+'%' });
+    badges.forEach(b => {
+      const el = document.createElement('div');
+      el.className = 'meta-badge';
+      el.innerHTML = `${b.l}: <strong>${b.v}</strong>`;
+      metaRow.appendChild(el);
+    });
+
+    renderPlot();
+    renderDmTable(data.distance_matrix);
+    resultSection.classList.add('visible');
+  }
+
+  // ── Plotly rendering ──
+  const PLOTLY_COLORS = ['#6366f1','#22c55e','#f59e0b','#ef4444','#06b6d4','#ec4899','#8b5cf6','#14b8a6','#f97316','#64748b'];
+  const PLOTLY_SYMBOLS_2D = ['circle','square','diamond','cross','triangle-up','star','hexagon','pentagon'];
+  const PLOTLY_SYMBOLS_3D = ['circle','square','diamond','cross'];
+
+  function isLight() { return document.documentElement.getAttribute('data-theme') === 'light'; }
+
+  function plotLayout(title, xLabel, yLabel, zLabel) {
+    const light = isLight();
+    const fg = light ? '#18181b' : '#fafafa';
+    const bg = light ? '#ffffff' : '#131316';
+    const grid = light ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)';
+
+    if (show3d) {
+      return {
+        paper_bgcolor: bg, plot_bgcolor: bg,
+        font: { color: fg, family: 'Inter, sans-serif', size: 11 },
+        margin: { l: 10, r: 10, t: 30, b: 10 },
+        scene: {
+          xaxis: { title: xLabel, gridcolor: grid, color: fg },
+          yaxis: { title: yLabel, gridcolor: grid, color: fg },
+          zaxis: { title: zLabel, gridcolor: grid, color: fg },
+          bgcolor: bg,
+        },
+        showlegend: true,
+        legend: { font: { size: 10 } },
+      };
+    }
+    return {
+      paper_bgcolor: bg, plot_bgcolor: bg,
+      font: { color: fg, family: 'Inter, sans-serif', size: 11 },
+      margin: { l: 60, r: 20, t: 30, b: 60 },
+      xaxis: { title: xLabel, gridcolor: grid, zerolinecolor: grid, color: fg },
+      yaxis: { title: yLabel, gridcolor: grid, zerolinecolor: grid, color: fg },
+      showlegend: true,
+      legend: { font: { size: 10 } },
+    };
+  }
+
+  function renderPlot() {
+    const d = currentData;
+    const ve = d.variance_explained;
+    const xLabel = `PC1 (${ve[0]}%)`;
+    const yLabel = `PC2 (${ve[1]}%)`;
+    const zLabel = ve.length > 2 ? `PC3 (${ve[2]}%)` : 'PC3';
+
+    const colCol = colourBy.value;
+    const shpCol = shapeBy.value;
+
+    // Group samples by colour+shape categories
+    const groups = {};
+    d.samples.forEach((s, i) => {
+      const cVal = colCol && d.metadata ? (d.metadata[colCol]?.[i] || 'NA') : '_all_';
+      const sVal = shpCol && d.metadata ? (d.metadata[shpCol]?.[i] || 'NA') : '_all_';
+      const key = `${cVal}|||${sVal}`;
+      if (!groups[key]) groups[key] = { cVal, sVal, idx: [] };
+      groups[key].idx.push(i);
+    });
+
+    const uniqueColors = [...new Set(Object.values(groups).map(g => g.cVal))];
+    const uniqueShapes = [...new Set(Object.values(groups).map(g => g.sVal))];
+    const symbols = show3d ? PLOTLY_SYMBOLS_3D : PLOTLY_SYMBOLS_2D;
+
+    const traces = [];
+    Object.values(groups).forEach(g => {
+      const ci = uniqueColors.indexOf(g.cVal) % PLOTLY_COLORS.length;
+      const si = uniqueShapes.indexOf(g.sVal) % symbols.length;
+      const name = [
+        colCol ? g.cVal : null,
+        shpCol ? g.sVal : null,
+      ].filter(Boolean).join(' / ') || 'Samples';
+
+      // Build hover text
+      const hovertext = g.idx.map(i => {
+        let txt = `<b>${d.samples[i]}</b>`;
+        if (d.metadata) {
+          d.metadata_columns.forEach(col => {
+            txt += `<br>${col}: ${d.metadata[col][i]}`;
+          });
+        }
+        return txt;
+      });
+
+      const trace = {
+        x: g.idx.map(i => d.pc1[i]),
+        y: g.idx.map(i => d.pc2[i]),
+        text: showLabels ? g.idx.map(i => d.samples[i]) : undefined,
+        hovertext: hovertext,
+        hoverinfo: 'text',
+        mode: showLabels ? 'markers+text' : 'markers',
+        textposition: 'top center',
+        textfont: { size: 9 },
+        name: name,
+        marker: {
+          color: PLOTLY_COLORS[ci],
+          symbol: symbols[si],
+          size: show3d ? 5 : 9,
+          line: { width: 1, color: 'rgba(0,0,0,0.3)' },
+        },
+      };
+
+      if (show3d) {
+        trace.z = g.idx.map(i => d.pc3[i]);
+        trace.type = 'scatter3d';
+      } else {
+        trace.type = 'scatter';
+      }
+
+      traces.push(trace);
+    });
+
+    const layout = plotLayout('', xLabel, yLabel, zLabel);
+    Plotly.newPlot(plotContainer, traces, layout, { responsive: true });
+  }
+
+  // ── Distance matrix table ──
+  function renderDmTable(dm) {
+    if (!dm) return;
+    const wrap = document.getElementById('dmTableWrap');
+    let html = '<table class="dm-table"><thead><tr><th></th>';
+    dm.ids.forEach(id => { html += `<th>${id}</th>`; });
+    html += '</tr></thead><tbody>';
+    dm.ids.forEach((id, i) => {
+      html += `<tr><td>${id}</td>`;
+      dm.matrix[i].forEach(v => {
+        html += `<td>${v.toFixed(4)}</td>`;
+      });
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    wrap.innerHTML = html;
+  }
+
+  // ── Downloads ──
+  document.getElementById('dlCoords').addEventListener('click', () => {
+    if (!currentData) return;
+    const d = currentData;
+    let csv = 'Sample,PC1,PC2,PC3\n';
+    d.samples.forEach((s, i) => {
+      csv += `${s},${d.pc1[i]},${d.pc2[i]},${d.pc3[i]}\n`;
+    });
+    downloadBlob(csv, 'pcoa_coordinates.csv', 'text/csv');
+  });
+
+  document.getElementById('dlDist').addEventListener('click', () => {
+    if (!currentData || !currentData.distance_matrix) return;
+    const dm = currentData.distance_matrix;
+    let csv = ',' + dm.ids.join(',') + '\n';
+    dm.ids.forEach((id, i) => {
+      csv += id + ',' + dm.matrix[i].map(v => v.toFixed(6)).join(',') + '\n';
+    });
+    downloadBlob(csv, 'distance_matrix.csv', 'text/csv');
+  });
+
+  function downloadBlob(content, filename, mime) {
+    const blob = new Blob([content], { type: mime });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  // ── Status ──
+  const statusIcons = {
+    loading: '<svg class="status-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>',
+    success: '<svg class="status-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>',
+    error: '<svg class="status-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg>',
+    warning: '<svg class="status-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z"/></svg>',
+  };
+
+  function showStatus(type, msg) {
+    statusEl.className = `status ${type}`;
+    statusEl.innerHTML = `${statusIcons[type]||''}<span>${msg}</span>`;
+  }
+  function clearStatus() { statusEl.className = 'status'; statusEl.innerHTML = ''; }
+
+  // ── Collapsibles ──
+  document.querySelectorAll('.collapsible-trigger').forEach(t => {
+    t.addEventListener('click', () => {
+      t.classList.toggle('open');
+      t.nextElementSibling.classList.toggle('open');
+    });
+  });
+
+  // ── API hint ──
+  const apiCode = document.getElementById('apiCode');
+  const baseUrl = {{ base_url | tojson }};
+  function updateApiHint() {
+    const m = distMetric.value;
+    const n = normMethod.value;
+    apiCode.innerHTML =
+      `<span class="cmd">curl</span> <span class="flag">-F</span> <span class="str">"abundance_file=@otu_table.csv"</span> \\` +
+      `\n     <span class="flag">-F</span> <span class="str">"metadata_file=@metadata.csv"</span> \\` +
+      `\n     <span class="flag">-F</span> <span class="str">"distance_metric=${m}"</span> \\` +
+      `\n     <span class="flag">-F</span> <span class="str">"normalisation=${n}"</span> \\` +
+      `\n     <span class="url">${baseUrl}/api/pcoa</span>`;
+  }
+  distMetric.addEventListener('change', updateApiHint);
+  normMethod.addEventListener('change', updateApiHint);
+  updateApiHint();
+
+  // ── Theme toggle ──
+  document.getElementById('themeToggle').addEventListener('click', () => {
+    const html = document.documentElement;
+    const next = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    html.setAttribute('data-theme', next);
+    localStorage.setItem('biotools-theme', next);
+    if (currentData) renderPlot();
+  });
+  (() => {
+    const saved = localStorage.getItem('biotools-theme');
+    if (saved === 'light') document.documentElement.setAttribute('data-theme', 'light');
+  })();
+</script>
+
+</body>
+</html>

@@ -4,11 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-BioTools is a self-hosted web app combining multiple bioinformatics tools behind a single Flask service served by Gunicorn in Docker. Currently includes three tools:
+BioTools is a self-hosted web app combining multiple bioinformatics tools behind a single Flask service served by Gunicorn in Docker. Currently includes four tools:
 
 - **SeqConvert** — Biological sequence format converter wrapping Biopython's `Bio.SeqIO` (~35 formats: FASTA, GenBank, FASTQ, EMBL, etc.)
 - **VennApp** — Interactive Venn diagram tool for comparing 2–4 ID lists with SVG rendering and export
 - **PhyloTree** — Phylogenetic tree builder: FASTA input → MSA (MUSCLE/ClustalOmega/built-in) → tree (NJ/UPGMA/ML via IQ-TREE) → interactive D3 visualization
+- **PCoA** — Principal Coordinates Analysis: abundance table → distance matrix (Bray-Curtis/Jaccard/Euclidean/Correlation) → PCoA ordination → interactive Plotly.js scatter plots (2D/3D) with optional metadata colouring
 
 ## Build & Run
 
@@ -31,17 +32,22 @@ There are no tests, linter, or CI configured.
 
 ## Architecture
 
-Single Flask app in `app/main.py` with SeqConvert and VennApp routes inline. PhyloTree is a Flask Blueprint registered from `app/phylotree/`. All UI is in self-contained Jinja2 templates with inline CSS/JS (no build step). The Flask app configures a `static/` folder but it is currently unused.
+Single Flask app in `app/main.py` with SeqConvert and VennApp routes inline. PhyloTree and PCoA are Flask Blueprints registered from `app/phylotree/` and `app/pcoa/`. All UI is in self-contained Jinja2 templates with inline CSS/JS (no build step). The Flask app configures a `static/` folder but it is currently unused.
 
-- **`app/main.py`** — SeqConvert/VennApp routes, conversion logic, auth decorator. Registers the PhyloTree blueprint.
+- **`app/main.py`** — SeqConvert/VennApp routes, conversion logic, auth decorator. Registers PhyloTree and PCoA blueprints.
 - **`app/formats.py`** — Static data: `INPUT_FORMATS`, `OUTPUT_FORMATS`, `MOLECULE_TYPES`, `FORMAT_INFO`.
 - **`app/phylotree/`** — PhyloTree Blueprint package:
   - `__init__.py` — Blueprint definition + `before_request` auth check
   - `routes.py` — `/phylotree` page and `/api/phylotree` endpoint
   - `utils.py` — Alignment (MUSCLE/ClustalOmega/built-in pairwise) and tree building (NJ/UPGMA via Biopython, ML via IQ-TREE subprocess)
+- **`app/pcoa/`** — PCoA Blueprint package:
+  - `__init__.py` — Blueprint definition + `before_request` auth check
+  - `routes.py` — `/pcoa` page and `/api/pcoa` endpoint
+  - `utils.py` — Abundance table parsing, normalisation (TSS/Hellinger), distance matrix (scikit-bio/scipy), PCoA ordination
 - **`templates/seqconvert.html`** — SeqConvert UI with drag-and-drop upload.
 - **`templates/venn.html`** — VennApp UI with client-side SVG Venn rendering.
 - **`templates/phylotree.html`** — PhyloTree UI with D3.js tree visualization, file upload + paste input, method selectors.
+- **`templates/pcoa.html`** — PCoA UI with Plotly.js interactive scatter plots (2D/3D), metadata colouring/shaping, distance matrix display.
 
 All templates include a shared navigation bar (`<nav class="topnav">`). The nav bar CSS is duplicated in each template (no shared base template).
 
@@ -57,6 +63,8 @@ All templates include a shared navigation bar (`<nav class="topnav">`). The nav 
 | `/phylotree` | GET | PhyloTree | Web UI |
 | `/api/phylotree` | POST | PhyloTree | FASTA → Newick tree (multipart or text) |
 | `/api/phylotree/methods` | GET | PhyloTree | Available alignment/tree methods |
+| `/pcoa` | GET | PCoA | Web UI |
+| `/api/pcoa` | POST | PCoA | Abundance table → PCoA results (multipart) |
 | `/health` | GET | — | Health check |
 
 ### Conversion Flow (SeqConvert)
@@ -71,6 +79,10 @@ Set operations computed both client-side (JS, for rendering) and server-side (`/
 
 FASTA input → alignment (MUSCLE/ClustalOmega subprocess or built-in pairwise distance) → tree building (NJ/UPGMA via `Bio.Phylo.TreeConstruction`, or ML via `iqtree2` subprocess with `-m MFP -B 1000`) → Newick string + metadata returned as JSON. Each job runs in a unique temp directory under `TMP_DIR`, cleaned up after response. External binaries (muscle, clustalo, iqtree) are gracefully detected; unavailable methods are disabled in the UI.
 
+### PCoA Pipeline
+
+Abundance table (CSV/TSV, features × samples) → optional metadata file → normalisation (none/TSS/Hellinger) → distance matrix (Bray-Curtis/Jaccard via `skbio.diversity.beta_diversity`, Euclidean/Correlation via `scipy.spatial.distance`) → PCoA ordination via `skbio.stats.ordination.pcoa()` → JSON with PC1-3 coordinates, variance explained, distance matrix, and optional metadata. The UI renders interactive 2D/3D scatter plots with Plotly.js.
+
 ## Key Configuration
 
 | Env Variable | Default | Purpose |
@@ -84,4 +96,4 @@ FASTA input → alignment (MUSCLE/ClustalOmega subprocess or built-in pairwise d
 
 ## Dependencies
 
-Python 3.12, Flask >= 3.0, Gunicorn >= 22.0, Biopython >= 1.84, NumPy >= 1.26. System binaries (Docker only): muscle, clustalo, iqtree.
+Python 3.12, Flask >= 3.0, Gunicorn >= 22.0, Biopython >= 1.84, NumPy >= 1.26, pandas >= 2.0, scipy >= 1.11, scikit-bio >= 0.6. System binaries (Docker only): muscle, clustalo, iqtree.

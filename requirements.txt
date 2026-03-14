@@ -2,3 +2,6 @@ flask>=3.0
 gunicorn>=22.0
 biopython>=1.84
 numpy>=1.26
+pandas>=2.0
+scipy>=1.11
+scikit-bio>=0.6

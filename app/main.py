@@ -19,6 +19,7 @@ from Bio import SeqIO
 
 from .formats import INPUT_FORMATS, OUTPUT_FORMATS, MOLECULE_TYPES, FORMAT_INFO
 from .phylotree import phylotree_bp
+from .pcoa import pcoa_bp
 
 app = Flask(
     __name__,
@@ -40,6 +41,7 @@ ADMIN_USER = os.environ.get("ADMIN_USER", "")
 ADMIN_PASS = os.environ.get("ADMIN_PASS", "")
 
 app.register_blueprint(phylotree_bp)
+app.register_blueprint(pcoa_bp)
 
 
 def require_auth(f):
