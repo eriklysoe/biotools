@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BioTools – PhyloTree</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    :root {
+      --bg: #09090b;
+      --surface: rgba(255,255,255,0.03);
+      --surface-hover: rgba(255,255,255,0.06);
+      --surface-solid: #131316;
+      --border: rgba(255,255,255,0.08);
+      --border-hover: rgba(255,255,255,0.15);
+      --text: #fafafa;
+      --text-secondary: #a1a1aa;
+      --text-muted: #71717a;
+      --accent: #6366f1;
+      --accent-light: #818cf8;
+      --accent-glow: rgba(99,102,241,0.15);
+      --accent-glow-strong: rgba(99,102,241,0.25);
+      --success: #22c55e;
+      --success-glow: rgba(34,197,94,0.15);
+      --error: #ef4444;
+      --error-glow: rgba(239,68,68,0.15);
+      --warning: #f59e0b;
+      --warning-glow: rgba(245,158,11,0.15);
+      --radius: 12px;
+      --radius-lg: 16px;
+      --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    [data-theme="light"] {
+      --bg: #f5f5f5;
+      --surface: rgba(0,0,0,0.03);
+      --surface-hover: rgba(0,0,0,0.06);
+      --surface-solid: #ffffff;
+      --border: rgba(0,0,0,0.12);
+      --border-hover: rgba(0,0,0,0.20);
+      --text: #18181b;
+      --text-secondary: #52525b;
+      --text-muted: #71717a;
+      --accent: #6366f1;
+      --accent-light: #4f46e5;
+      --accent-glow: rgba(99,102,241,0.10);
+      --accent-glow-strong: rgba(99,102,241,0.18);
+      --success: #16a34a;
+      --success-glow: rgba(22,163,74,0.10);
+      --error: #dc2626;
+      --error-glow: rgba(220,38,38,0.08);
+      --warning: #d97706;
+      --warning-glow: rgba(217,119,6,0.10);
+    }
+
+    [data-theme="light"] body::before {
+      background-image:
+        linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px);
+    }
+
+    [data-theme="light"] body::after {
+      background: radial-gradient(circle, rgba(99,102,241,0.06) 0%, transparent 70%);
+    }
+
+    [data-theme="light"] header h1 span {
+      background: linear-gradient(135deg, var(--accent), #7c3aed);
+      -webkit-background-clip: text;
+      background-clip: text;
+    }
+
+    [data-theme="light"] .topnav {
+      background: rgba(245,245,245,0.85);
+    }
+
+    [data-theme="light"] .status.error {
+      background: var(--error-glow);
+      border-color: rgba(220,38,38,0.25);
+      color: #991b1b;
+    }
+
+    [data-theme="light"] .tree-link { stroke: #a1a1aa; }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 3rem 1.25rem;
+      padding-top: 4.5rem;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+      background-size: 64px 64px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      top: -200px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Navigation bar ── */
+    .topnav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.5rem 1.25rem;
+      background: rgba(9,9,11,0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .topnav-brand {
+      font-size: 0.8125rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-right: 1rem;
+      text-decoration: none;
+      letter-spacing: -0.02em;
+    }
+
+    .topnav-brand span {
+      background: linear-gradient(135deg, var(--accent-light), #c084fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .topnav a.nav-link {
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      text-decoration: none;
+      padding: 0.375rem 0.75rem;
+      border-radius: 8px;
+      transition: all var(--transition);
+    }
+
+    .topnav a.nav-link:hover {
+      color: var(--text);
+      background: var(--surface-hover);
+    }
+
+    .topnav a.nav-link.active {
+      color: var(--accent-light);
+      background: var(--accent-glow);
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 900px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ── Header ── */
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .logo-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, var(--accent), #a78bfa);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .logo-icon svg {
+      width: 22px;
+      height: 22px;
+      stroke: white;
+      fill: none;
+    }
+
+    header h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: var(--text);
+    }
+
+    header h1 span {
+      background: linear-gradient(135deg, var(--accent-light), #c084fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    header p {
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+      font-size: 0.875rem;
+      font-weight: 400;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      width: 100%;
+      margin-bottom: 1rem;
+      transition: border-color var(--transition);
+    }
+
+    .card:hover {
+      border-color: var(--border-hover);
+    }
+
+    .card-title {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+    }
+
+    /* ── Input tabs ── */
+    .input-tabs {
+      display: flex;
+      gap: 0.25rem;
+      margin-bottom: 1rem;
+      background: rgba(255,255,255,0.03);
+      border-radius: 10px;
+      padding: 0.25rem;
+    }
+
+    .input-tab {
+      flex: 1;
+      padding: 0.5rem 0.75rem;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      font-weight: 500;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+
+    .input-tab:hover { color: var(--text-secondary); }
+    .input-tab.active {
+      background: var(--surface-hover);
+      color: var(--text);
+    }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* ── Drop zone ── */
+    .dropzone {
+      border: 1.5px dashed rgba(255,255,255,0.12);
+      border-radius: var(--radius);
+      padding: 2.5rem 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .dropzone::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at center, var(--accent-glow) 0%, transparent 70%);
+      opacity: 0;
+      transition: opacity var(--transition);
+    }
+
+    .dropzone:hover::before,
+    .dropzone.dragover::before { opacity: 1; }
+
+    .dropzone:hover,
+    .dropzone.dragover {
+      border-color: var(--accent);
+      border-style: dashed;
+    }
+
+    .dropzone.has-file {
+      border-color: var(--success);
+      border-style: solid;
+    }
+
+    .dropzone.has-file::before {
+      background: radial-gradient(circle at center, var(--success-glow) 0%, transparent 70%);
+      opacity: 1;
+    }
+
+    .dropzone-content {
+      position: relative;
+      z-index: 1;
+    }
+
+    .dropzone-icon {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto 1rem;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.05);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all var(--transition);
+    }
+
+    .dropzone:hover .dropzone-icon,
+    .dropzone.dragover .dropzone-icon { background: var(--accent-glow); }
+    .dropzone.has-file .dropzone-icon { background: var(--success-glow); }
+
+    .dropzone-icon svg {
+      width: 24px;
+      height: 24px;
+      stroke: var(--text-muted);
+      transition: stroke var(--transition);
+    }
+
+    .dropzone:hover .dropzone-icon svg,
+    .dropzone.dragover .dropzone-icon svg { stroke: var(--accent-light); }
+    .dropzone.has-file .dropzone-icon svg { stroke: var(--success); }
+
+    .dropzone p { color: var(--text-secondary); font-size: 0.8125rem; }
+    .dropzone .filename { color: var(--text); font-weight: 600; font-size: 0.9rem; word-break: break-all; }
+    .dropzone .filesize { color: var(--text-muted); font-size: 0.75rem; margin-top: 0.25rem; }
+    .dropzone input { display: none; }
+
+    /* ── Textarea ── */
+    .seq-textarea {
+      width: 100%;
+      min-height: 160px;
+      background: var(--surface-solid);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      line-height: 1.6;
+      padding: 0.75rem 1rem;
+      resize: vertical;
+      transition: border-color var(--transition);
+    }
+
+    .seq-textarea:hover { border-color: var(--border-hover); }
+    .seq-textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+    .seq-textarea::placeholder { color: var(--text-muted); }
+
+    /* ── Form controls ── */
+    .row { display: flex; gap: 0.75rem; }
+    .row > * { flex: 1; }
+
+    label.field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    select {
+      appearance: none;
+      background: var(--surface-solid);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      padding: 0.625rem 0.875rem;
+      font-size: 0.8125rem;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all var(--transition);
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2371717a'%3E%3Cpath d='M6 8.5L1 3.5h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.75rem center;
+      padding-right: 2.25rem;
+    }
+
+    select:hover { border-color: var(--border-hover); background-color: var(--surface-hover); }
+    select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+    select option { background: var(--surface-solid); color: var(--text); }
+
+    select:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    /* ── Warning banner ── */
+    .method-warning {
+      display: none;
+      padding: 0.625rem 0.875rem;
+      border-radius: var(--radius);
+      font-size: 0.75rem;
+      margin-top: 0.75rem;
+      background: var(--warning-glow);
+      border: 1px solid rgba(245,158,11,0.25);
+      color: #fbbf24;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .method-warning.visible { display: flex; }
+
+    /* ── Button ── */
+    .btn {
+      width: 100%;
+      padding: 0.8rem;
+      border: none;
+      border-radius: var(--radius);
+      background: linear-gradient(135deg, var(--accent), #7c3aed);
+      color: #fff;
+      font-size: 0.875rem;
+      font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all var(--transition);
+      position: relative;
+      overflow: hidden;
+      margin-top: 0.25rem;
+    }
+
+    .btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+      opacity: 0;
+      transition: opacity var(--transition);
+    }
+
+    .btn:hover:not(:disabled)::before { opacity: 1; }
+    .btn:hover:not(:disabled) {
+      box-shadow: 0 0 24px var(--accent-glow-strong);
+      transform: translateY(-1px);
+    }
+    .btn:active:not(:disabled) { transform: translateY(0) scale(0.99); }
+    .btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      background: rgba(255,255,255,0.08);
+      color: var(--text-muted);
+    }
+
+    /* ── Status ── */
+    .status {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border-radius: var(--radius);
+      font-size: 0.8125rem;
+      margin-top: 0.75rem;
+      display: none;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .status.error {
+      display: flex;
+      background: var(--error-glow);
+      border: 1px solid rgba(239,68,68,0.25);
+      color: #fca5a5;
+    }
+    .status.success {
+      display: flex;
+      background: var(--success-glow);
+      border: 1px solid rgba(34,197,94,0.25);
+      color: #86efac;
+    }
+    .status.loading {
+      display: flex;
+      background: var(--accent-glow);
+      border: 1px solid rgba(99,102,241,0.25);
+      color: var(--accent-light);
+    }
+
+    .status-icon { flex-shrink: 0; width: 16px; height: 16px; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .status.loading .status-icon { animation: spin 1s linear infinite; }
+
+    /* ── Tree result ── */
+    .tree-result {
+      display: none;
+      width: 100%;
+      margin-top: 1rem;
+    }
+
+    .tree-result.visible { display: block; }
+
+    .tree-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .meta-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 8px;
+      font-size: 0.7rem;
+      font-weight: 500;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+    }
+
+    .meta-badge strong { color: var(--text); }
+
+    #tree-display {
+      width: 100%;
+      min-height: 300px;
+      background: var(--surface-solid);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      position: relative;
+    }
+
+    #tree-display svg {
+      width: 100%;
+      display: block;
+    }
+
+    .tree-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+
+    .btn-secondary {
+      flex: 1;
+      padding: 0.6rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--text-secondary);
+      font-size: 0.8125rem;
+      font-weight: 500;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+
+    .btn-secondary:hover {
+      background: var(--surface-hover);
+      border-color: var(--border-hover);
+      color: var(--text);
+    }
+
+    .export-group {
+      display: flex;
+      gap: 0.375rem;
+      flex: 1;
+    }
+
+    .export-select {
+      flex: 1;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.75rem;
+    }
+
+    /* ── Newick display ── */
+    .newick-box {
+      margin-top: 0.75rem;
+      padding: 0.75rem 1rem;
+      background: var(--surface-solid);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      word-break: break-all;
+      max-height: 100px;
+      overflow-y: auto;
+      display: none;
+    }
+
+    .newick-box.visible { display: block; }
+
+    /* ── Collapsible ── */
+    .collapsible { width: 100%; margin-top: 1rem; }
+
+    .collapsible-trigger {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 0.75rem;
+      font-family: 'Inter', sans-serif;
+      font-weight: 500;
+      padding: 0.625rem 1rem;
+      width: 100%;
+      text-align: left;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all var(--transition);
+    }
+
+    .collapsible-trigger:hover {
+      background: var(--surface);
+      border-color: var(--border-hover);
+      color: var(--text);
+    }
+
+    .collapsible-trigger.open {
+      border-radius: var(--radius) var(--radius) 0 0;
+      background: var(--surface);
+      border-bottom-color: transparent;
+    }
+
+    .collapsible-chevron {
+      width: 14px;
+      height: 14px;
+      stroke: currentColor;
+      transition: transform var(--transition);
+    }
+
+    .collapsible-trigger.open .collapsible-chevron { transform: rotate(180deg); }
+
+    .collapsible-body {
+      display: none;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 var(--radius) var(--radius);
+      overflow: hidden;
+    }
+
+    .collapsible-body.open { display: block; }
+
+    .api-code {
+      font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+      font-size: 0.7rem;
+      line-height: 1.7;
+      color: var(--text-secondary);
+      padding: 1rem 1.25rem;
+      overflow-x: auto;
+      white-space: pre;
+    }
+
+    .api-code .cmd { color: var(--success); }
+    .api-code .flag { color: var(--accent-light); }
+    .api-code .str { color: #f59e0b; }
+    .api-code .url { color: var(--text-muted); }
+
+    /* tree node/link styles */
+    .tree-link { fill: none; stroke: var(--text-muted); stroke-width: 1.5px; }
+    .tree-node circle { fill: var(--surface-solid); stroke: var(--accent-light); stroke-width: 1.5px; }
+    .tree-label { fill: var(--text-secondary); font-size: 11px; font-family: 'Inter', sans-serif; }
+    .tree-bootstrap { fill: var(--warning); font-size: 9px; font-family: 'JetBrains Mono', monospace; }
+    .tree-scale-line { stroke: var(--text-muted); stroke-width: 1px; }
+    .tree-scale-text { fill: var(--text-muted); font-size: 10px; font-family: 'Inter', sans-serif; }
+
+    /* ── Footer ── */
+    footer {
+      margin-top: 2.5rem;
+      color: var(--text-muted);
+      font-size: 0.6875rem;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    footer span { opacity: 0.3; }
+    footer a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      transition: color var(--transition);
+    }
+    footer a:hover { color: var(--text); }
+
+    /* ── Theme toggle ── */
+    .theme-toggle {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 100;
+      background: var(--surface-solid);
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all var(--transition);
+      color: var(--text-muted);
+    }
+    .theme-toggle:hover {
+      border-color: var(--accent);
+      color: var(--accent-light);
+      background: var(--accent-glow);
+    }
+    .theme-toggle svg { width: 18px; height: 18px; }
+    .theme-toggle .icon-sun { display: none; }
+    [data-theme="light"] .theme-toggle .icon-moon { display: none; }
+    [data-theme="light"] .theme-toggle .icon-sun { display: block; }
+
+    @media (max-width: 480px) {
+      body { padding: 1.5rem 1rem; padding-top: 4rem; }
+      .row { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="topnav">
+    <a class="topnav-brand" href="/"><span>Bio</span>Tools</a>
+    <a class="nav-link" href="/seqconvert">SeqConvert</a>
+    <a class="nav-link" href="/venn">Venn Diagram</a>
+    <a class="nav-link active" href="/phylotree">PhyloTree</a>
+  </nav>
+  <button class="theme-toggle" id="themeToggle" title="Toggle light/dark mode">
+    <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0112.478 3.34a9.75 9.75 0 109.274 11.662z"/></svg>
+    <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1.5M12 19.5V21M4.219 4.219l1.061 1.061M17.72 17.72l1.06 1.06M3 12h1.5M19.5 12H21M4.219 19.781l1.061-1.061M17.72 6.28l1.06-1.06"/><circle cx="12" cy="12" r="4.5"/></svg>
+  </button>
+
+  <div class="container">
+    <header>
+      <div class="logo">
+        <div class="logo-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3v6"/>
+            <path d="M8 9H5a2 2 0 0 0-2 2v1"/>
+            <path d="M16 9h3a2 2 0 0 1 2 2v1"/>
+            <path d="M12 9v4"/>
+            <path d="M8 13H4"/>
+            <path d="M16 13h4"/>
+            <path d="M12 13v4"/>
+            <path d="M9 17H6"/>
+            <path d="M15 17h3"/>
+            <circle cx="12" cy="21" r="1"/>
+          </svg>
+        </div>
+        <h1><span>Phylo</span>Tree</h1>
+      </div>
+      <p>Build phylogenetic trees from DNA sequences</p>
+    </header>
+
+    <!-- Input card -->
+    <div class="card">
+      <div class="card-title">Sequence input</div>
+
+      <div class="input-tabs">
+        <button class="input-tab active" data-tab="upload">Upload FASTA</button>
+        <button class="input-tab" data-tab="paste">Paste Sequences</button>
+      </div>
+
+      <div class="tab-content active" id="tab-upload">
+        <div class="dropzone" id="dropzone">
+          <div class="dropzone-content">
+            <div class="dropzone-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+              </svg>
+            </div>
+            <p>Drop a FASTA file here or click to browse</p>
+          </div>
+          <input type="file" id="fileInput" accept=".fasta,.fa,.fna,.fas,.txt">
+        </div>
+      </div>
+
+      <div class="tab-content" id="tab-paste">
+        <textarea class="seq-textarea" id="seqTextarea"
+          placeholder=">Sequence_1&#10;ATCGATCGATCG...&#10;>Sequence_2&#10;ATCGATCGATCG...&#10;>Sequence_3&#10;ATCGATCGATCG..."></textarea>
+      </div>
+    </div>
+
+    <!-- Settings card -->
+    <div class="card">
+      <div class="card-title">Analysis settings</div>
+      <div class="row" style="margin-bottom: 0.75rem">
+        <label class="field">
+          Alignment method
+          <select id="alignMethod">
+            <option value="muscle" {% if not available.alignment.muscle %}disabled{% endif %}>
+              MUSCLE {% if not available.alignment.muscle %}(not installed){% endif %}
+            </option>
+            <option value="clustalo" {% if not available.alignment.clustalo %}disabled{% endif %}>
+              ClustalOmega {% if not available.alignment.clustalo %}(not installed){% endif %}
+            </option>
+            <option value="builtin">Built-in (pairwise distances)</option>
+          </select>
+        </label>
+        <label class="field">
+          Tree method
+          <select id="treeMethod">
+            <option value="nj">Neighbour-Joining</option>
+            <option value="upgma">UPGMA</option>
+            <option value="ml" {% if not available.tree.ml %}disabled{% endif %}>
+              Maximum Likelihood (IQ-TREE) {% if not available.tree.ml %}(not installed){% endif %}
+            </option>
+          </select>
+        </label>
+      </div>
+      <div class="method-warning" id="mlWarning">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/>
+        </svg>
+        ML analysis may take significantly longer for large datasets
+      </div>
+      <div class="method-warning" id="builtinMlWarning">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/>
+        </svg>
+        ML requires MUSCLE or ClustalOmega for alignment
+      </div>
+    </div>
+
+    <button class="btn" id="buildBtn" disabled>Build Tree</button>
+
+    <div class="status" id="status"></div>
+
+    <!-- Tree result -->
+    <div class="tree-result" id="treeResult">
+      <div class="card">
+        <div class="card-title">Phylogenetic tree</div>
+        <div class="tree-meta" id="treeMeta"></div>
+        <div id="tree-display"></div>
+        <div class="tree-actions">
+          <div class="export-group">
+            <select id="exportFormat" class="export-select">
+              <option value="newick">Newick (.nwk)</option>
+              <option value="nexus">Nexus (.nex)</option>
+              <option value="phyloxml">PhyloXML (.xml)</option>
+              <option value="nexml">NeXML (.xml)</option>
+            </select>
+            <button class="btn-secondary" id="downloadTree">Export Tree</button>
+          </div>
+          <button class="btn-secondary" id="downloadSvg">Download SVG</button>
+          <button class="btn-secondary" id="toggleNewick">Show Newick</button>
+        </div>
+        <div class="newick-box" id="newickBox"></div>
+      </div>
+    </div>
+
+    <!-- API usage hint -->
+    <div class="collapsible">
+      <button class="collapsible-trigger" id="apiToggle">
+        API / CLI usage
+        <svg class="collapsible-chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+        </svg>
+      </button>
+      <div class="collapsible-body" id="apiBody">
+        <div class="api-code" id="apiCode"></div>
+      </div>
+    </div>
+
+    <footer>
+      BioTools – PhyloTree
+      <span>&middot;</span>
+      Biopython &amp; IQ-TREE
+      <span>&middot;</span>
+      <a href="/api/phylotree/methods">Available methods</a>
+    </footer>
+  </div>
+
+<script>
+  // ── Elements ──
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const seqTextarea = document.getElementById('seqTextarea');
+  const buildBtn = document.getElementById('buildBtn');
+  const statusEl = document.getElementById('status');
+  const treeResult = document.getElementById('treeResult');
+  const treeMeta = document.getElementById('treeMeta');
+  const treeDisplay = document.getElementById('tree-display');
+  const newickBox = document.getElementById('newickBox');
+  const alignMethod = document.getElementById('alignMethod');
+  const treeMethod = document.getElementById('treeMethod');
+  const mlWarning = document.getElementById('mlWarning');
+  const builtinMlWarning = document.getElementById('builtinMlWarning');
+
+  let selectedFile = null;
+  let currentNewick = '';
+  let activeTab = 'upload';
+
+  // ── Tab switching ──
+  document.querySelectorAll('.input-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.input-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      tab.classList.add('active');
+      activeTab = tab.dataset.tab;
+      document.getElementById('tab-' + activeTab).classList.add('active');
+      updateBuildButton();
+    });
+  });
+
+  // ── Drop zone ──
+  dropzone.addEventListener('click', () => fileInput.click());
+  dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+  dropzone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropzone.classList.remove('dragover');
+    if (e.dataTransfer.files.length) setFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files.length) setFile(fileInput.files[0]);
+  });
+
+  function setFile(file) {
+    selectedFile = file;
+    dropzone.classList.add('has-file');
+    const content = dropzone.querySelector('.dropzone-content');
+    const size = file.size < 1024 * 1024
+      ? (file.size / 1024).toFixed(1) + ' KB'
+      : (file.size / (1024 * 1024)).toFixed(2) + ' MB';
+    content.querySelector('p').innerHTML =
+      `<span class="filename">${file.name}</span><span class="filesize">${size}</span>`;
+    updateBuildButton();
+    clearStatus();
+  }
+
+  seqTextarea.addEventListener('input', () => updateBuildButton());
+
+  function updateBuildButton() {
+    const hasInput = activeTab === 'upload' ? !!selectedFile : seqTextarea.value.trim().length > 0;
+    buildBtn.disabled = !hasInput;
+  }
+
+  // ── Method warnings ──
+  function updateWarnings() {
+    const isMl = treeMethod.value === 'ml';
+    const isBuiltin = alignMethod.value === 'builtin';
+    mlWarning.classList.toggle('visible', isMl && !isBuiltin);
+    builtinMlWarning.classList.toggle('visible', isMl && isBuiltin);
+  }
+  alignMethod.addEventListener('change', updateWarnings);
+  treeMethod.addEventListener('change', updateWarnings);
+  updateWarnings();
+
+  // ── Build tree ──
+  buildBtn.addEventListener('click', async () => {
+    buildBtn.disabled = true;
+    showStatus('loading', 'Building tree\u2026 this may take a moment');
+    treeResult.classList.remove('visible');
+
+    const form = new FormData();
+    if (activeTab === 'upload') {
+      form.append('file', selectedFile);
+    } else {
+      form.append('sequences', seqTextarea.value.trim());
+    }
+    form.append('alignment_method', alignMethod.value);
+    form.append('tree_method', treeMethod.value);
+
+    try {
+      const resp = await fetch('/api/phylotree', { method: 'POST', body: form });
+      const data = await resp.json();
+
+      if (!resp.ok) {
+        throw new Error(data.error || `HTTP ${resp.status}`);
+      }
+
+      currentNewick = data.newick;
+      showStatus('success', 'Tree built successfully');
+      displayResult(data);
+    } catch (e) {
+      showStatus('error', e.message);
+    } finally {
+      buildBtn.disabled = false;
+    }
+  });
+
+  // ── Display result ──
+  function displayResult(data) {
+    // Metadata badges
+    treeMeta.innerHTML = '';
+    const badges = [
+      { label: 'Method', value: { nj: 'Neighbour-Joining', upgma: 'UPGMA', ml: 'Maximum Likelihood' }[data.method] },
+      { label: 'Sequences', value: data.num_sequences },
+    ];
+    if (data.alignment_length) badges.push({ label: 'Alignment', value: data.alignment_length + ' bp' });
+    if (data.model) badges.push({ label: 'Model', value: data.model });
+    if (data.bootstrap) badges.push({ label: 'Bootstrap', value: '1000 replicates' });
+
+    badges.forEach(b => {
+      const el = document.createElement('div');
+      el.className = 'meta-badge';
+      el.innerHTML = `${b.label}: <strong>${b.value}</strong>`;
+      treeMeta.appendChild(el);
+    });
+
+    // Render tree
+    treeDisplay.innerHTML = '';
+    renderPhyloTree(data.newick, treeDisplay, { showBootstrap: data.bootstrap });
+
+    // Newick box
+    newickBox.textContent = data.newick;
+    newickBox.classList.remove('visible');
+
+    treeResult.classList.add('visible');
+  }
+
+  // ── Newick parser ──
+  function parseNewick(s) {
+    var ancestors = [];
+    var tree = {};
+    var subtree;
+    var tokens = s.split(/\s*(;|\(|\)|,|:)\s*/);
+    for (var i = 0; i < tokens.length; i++) {
+      var token = tokens[i];
+      switch (token) {
+        case '(':
+          subtree = {};
+          tree.children = tree.children || [];
+          tree.children.push(subtree);
+          ancestors.push(tree);
+          tree = subtree;
+          break;
+        case ',':
+          subtree = {};
+          ancestors[ancestors.length - 1].children.push(subtree);
+          tree = subtree;
+          break;
+        case ')':
+          tree = ancestors.pop();
+          break;
+        case ':':
+          break;
+        default:
+          var x = tokens[i - 1];
+          if (x === ')' || x === '(' || x === ',') {
+            tree.name = token;
+          } else if (x === ':') {
+            tree.length = parseFloat(token);
+          }
+      }
+    }
+    return tree;
+  }
+
+  // ── D3 tree renderer ──
+  function renderPhyloTree(newick, container, options) {
+    const parsed = parseNewick(newick);
+    if (!parsed || (!parsed.children && !parsed.name)) {
+      container.innerHTML = '<p style="padding:2rem;color:var(--text-muted)">Could not parse tree</p>';
+      return;
+    }
+
+    const root = d3.hierarchy(parsed);
+    const leaves = root.leaves();
+    const tipSpacing = 22;
+    const margin = { top: 30, right: 220, bottom: 40, left: 30 };
+    const height = Math.max(300, leaves.length * tipSpacing + margin.top + margin.bottom);
+    const width = container.clientWidth || 800;
+    const innerW = width - margin.left - margin.right;
+    const innerH = height - margin.top - margin.bottom;
+
+    // Cumulative branch lengths
+    function setCumulativeDepth(node, depth) {
+      node.data._depth = depth;
+      if (node.children) {
+        node.children.forEach(c => setCumulativeDepth(c, depth + (c.data.length || 0)));
+      }
+    }
+    setCumulativeDepth(root, 0);
+
+    const maxDepth = d3.max(root.descendants(), d => d.data._depth) || 1;
+    const xScale = d3.scaleLinear().domain([0, maxDepth]).range([0, innerW]);
+
+    // Assign y positions to leaves
+    leaves.forEach((leaf, i) => {
+      leaf.data._y = (i / Math.max(1, leaves.length - 1)) * innerH;
+    });
+
+    // Internal nodes: average of children
+    function setInternalY(node) {
+      if (node.children) {
+        node.children.forEach(setInternalY);
+        node.data._y = d3.mean(node.children, c => c.data._y);
+      }
+    }
+    setInternalY(root);
+
+    // SVG
+    const svg = d3.select(container)
+      .append('svg')
+      .attr('width', width)
+      .attr('height', height)
+      .attr('viewBox', `0 0 ${width} ${height}`);
+
+    const g = svg.append('g')
+      .attr('transform', `translate(${margin.left},${margin.top})`);
+
+    // Draw elbow connectors
+    root.descendants().filter(d => d.children).forEach(node => {
+      const px = xScale(node.data._depth);
+      const py = node.data._y;
+
+      node.children.forEach(child => {
+        const cx = xScale(child.data._depth);
+        const cy = child.data._y;
+
+        // Horizontal line at child's y from parent's x to child's x
+        g.append('line')
+          .attr('class', 'tree-link')
+          .attr('x1', px).attr('y1', cy)
+          .attr('x2', cx).attr('y2', cy);
+
+        // Vertical line at parent's x from parent's y towards child's y
+        g.append('line')
+          .attr('class', 'tree-link')
+          .attr('x1', px).attr('y1', py)
+          .attr('x2', px).attr('y2', cy);
+      });
+    });
+
+    // Leaf labels
+    leaves.forEach(leaf => {
+      const name = leaf.data.name || '';
+      g.append('text')
+        .attr('class', 'tree-label')
+        .attr('x', xScale(leaf.data._depth) + 8)
+        .attr('y', leaf.data._y)
+        .attr('dy', '0.35em')
+        .text(name);
+    });
+
+    // Bootstrap support on internal nodes
+    if (options.showBootstrap) {
+      root.descendants().filter(d => d.children && d.data.name).forEach(node => {
+        const val = parseFloat(node.data.name);
+        if (!isNaN(val) && val > 0) {
+          g.append('text')
+            .attr('class', 'tree-bootstrap')
+            .attr('x', xScale(node.data._depth) - 4)
+            .attr('y', node.data._y - 6)
+            .attr('text-anchor', 'end')
+            .text(Math.round(val));
+        }
+      });
+    }
+
+    // Small circles on internal nodes
+    root.descendants().filter(d => d.children).forEach(node => {
+      g.append('circle')
+        .attr('class', 'tree-node')
+        .attr('cx', xScale(node.data._depth))
+        .attr('cy', node.data._y)
+        .attr('r', 2.5);
+    });
+
+    // Scale bar
+    const scaleLen = maxDepth * 0.1;
+    const scaleX = xScale(scaleLen);
+    const scaleY = innerH + 20;
+    g.append('line')
+      .attr('class', 'tree-scale-line')
+      .attr('x1', 0).attr('y1', scaleY)
+      .attr('x2', scaleX).attr('y2', scaleY);
+    g.append('text')
+      .attr('class', 'tree-scale-text')
+      .attr('x', scaleX / 2).attr('y', scaleY + 14)
+      .attr('text-anchor', 'middle')
+      .text(scaleLen.toPrecision(2));
+  }
+
+  // ── Export tree in selected format ──
+  document.getElementById('downloadTree').addEventListener('click', async () => {
+    const fmt = document.getElementById('exportFormat').value;
+
+    if (fmt === 'newick') {
+      // Direct client-side download for Newick
+      const blob = new Blob([currentNewick], { type: 'text/plain' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'tree.nwk';
+      a.click();
+      URL.revokeObjectURL(a.href);
+      return;
+    }
+
+    // Server-side conversion for other formats
+    try {
+      const resp = await fetch('/api/phylotree/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newick: currentNewick, format: fmt }),
+      });
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ error: 'Export failed' }));
+        showStatus('error', err.error);
+        return;
+      }
+
+      const blob = await resp.blob();
+      const cd = resp.headers.get('content-disposition') || '';
+      const match = cd.match(/filename="?(.+?)"?$/);
+      const filename = match ? match[1] : 'tree.txt';
+
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch (e) {
+      showStatus('error', 'Export failed: ' + e.message);
+    }
+  });
+
+  // ── Download SVG ──
+  document.getElementById('downloadSvg').addEventListener('click', () => {
+    const svgEl = treeDisplay.querySelector('svg');
+    if (!svgEl) return;
+    const serializer = new XMLSerializer();
+    const svgStr = serializer.serializeToString(svgEl);
+    const blob = new Blob([svgStr], { type: 'image/svg+xml' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'phylotree.svg';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  // ── Toggle Newick display ──
+  document.getElementById('toggleNewick').addEventListener('click', () => {
+    newickBox.classList.toggle('visible');
+  });
+
+  // ── Status helpers ──
+  const statusIcons = {
+    loading: '<svg class="status-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>',
+    success: '<svg class="status-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>',
+    error: '<svg class="status-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg>',
+  };
+
+  function showStatus(type, msg) {
+    statusEl.className = `status ${type}`;
+    statusEl.innerHTML = `${statusIcons[type] || ''}<span>${msg}</span>`;
+  }
+
+  function clearStatus() {
+    statusEl.className = 'status';
+    statusEl.innerHTML = '';
+  }
+
+  // ── Collapsible toggle ──
+  document.querySelectorAll('.collapsible-trigger').forEach(trigger => {
+    trigger.addEventListener('click', () => {
+      trigger.classList.toggle('open');
+      trigger.nextElementSibling.classList.toggle('open');
+    });
+  });
+
+  // ── API hint ──
+  const apiCode = document.getElementById('apiCode');
+  const baseUrl = {{ base_url | tojson }};
+
+  function updateApiHint() {
+    const am = alignMethod.value;
+    const tm = treeMethod.value;
+    apiCode.innerHTML =
+      `<span class="cmd">curl</span> <span class="flag">-F</span> <span class="str">"file=@sequences.fasta"</span> \\` +
+      `\n     <span class="flag">-F</span> <span class="str">"alignment_method=${am}"</span> \\` +
+      `\n     <span class="flag">-F</span> <span class="str">"tree_method=${tm}"</span> \\` +
+      `\n     <span class="url">${baseUrl}/api/phylotree</span>`;
+  }
+
+  alignMethod.addEventListener('change', updateApiHint);
+  treeMethod.addEventListener('change', updateApiHint);
+  updateApiHint();
+
+  // ── Theme toggle ──
+  document.getElementById('themeToggle').addEventListener('click', () => {
+    const html = document.documentElement;
+    const current = html.getAttribute('data-theme');
+    const next = current === 'light' ? 'dark' : 'light';
+    html.setAttribute('data-theme', next);
+    localStorage.setItem('biotools-theme', next);
+    // Re-render tree if visible (SVG colors need updating)
+    if (currentNewick && treeResult.classList.contains('visible')) {
+      treeDisplay.innerHTML = '';
+      const showBs = treeMethod.value === 'ml';
+      renderPhyloTree(currentNewick, treeDisplay, { showBootstrap: showBs });
+    }
+  });
+
+  // Restore saved theme
+  (() => {
+    const saved = localStorage.getItem('biotools-theme');
+    if (saved === 'light') document.documentElement.setAttribute('data-theme', 'light');
+  })();
+</script>
+
+</body>
+</html>
