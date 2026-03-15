@@ -1,0 +1,1546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BioTools – PrimerCheck</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.plot.ly/plotly-2.35.0.min.js"></script>
+  <style>
+    :root {
+      --bg: #09090b;
+      --surface: rgba(255,255,255,0.03);
+      --surface-hover: rgba(255,255,255,0.06);
+      --surface-solid: #131316;
+      --border: rgba(255,255,255,0.08);
+      --border-hover: rgba(255,255,255,0.15);
+      --text: #fafafa;
+      --text-secondary: #a1a1aa;
+      --text-muted: #71717a;
+      --accent: #6366f1;
+      --accent-light: #818cf8;
+      --accent-glow: rgba(99,102,241,0.15);
+      --accent-glow-strong: rgba(99,102,241,0.25);
+      --success: #22c55e;
+      --success-glow: rgba(34,197,94,0.15);
+      --error: #ef4444;
+      --error-glow: rgba(239,68,68,0.15);
+      --warning: #f59e0b;
+      --warning-glow: rgba(245,158,11,0.15);
+      --radius: 12px;
+      --radius-lg: 16px;
+      --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    [data-theme="light"] {
+      --bg: #f5f5f5;
+      --surface: rgba(0,0,0,0.03);
+      --surface-hover: rgba(0,0,0,0.06);
+      --surface-solid: #ffffff;
+      --border: rgba(0,0,0,0.12);
+      --border-hover: rgba(0,0,0,0.20);
+      --text: #18181b;
+      --text-secondary: #52525b;
+      --text-muted: #71717a;
+      --accent: #6366f1;
+      --accent-light: #4f46e5;
+      --accent-glow: rgba(99,102,241,0.10);
+      --accent-glow-strong: rgba(99,102,241,0.18);
+      --success: #16a34a;
+      --success-glow: rgba(22,163,74,0.10);
+      --error: #dc2626;
+      --error-glow: rgba(220,38,38,0.08);
+      --warning: #d97706;
+      --warning-glow: rgba(217,119,6,0.10);
+    }
+
+    [data-theme="light"] body::before {
+      background-image:
+        linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px);
+    }
+    [data-theme="light"] body::after {
+      background: radial-gradient(circle, rgba(99,102,241,0.06) 0%, transparent 70%);
+    }
+    [data-theme="light"] header h1 span {
+      background: linear-gradient(135deg, var(--accent), #7c3aed);
+      -webkit-background-clip: text; background-clip: text;
+    }
+    [data-theme="light"] .topnav { background: rgba(245,245,245,0.85); }
+    [data-theme="light"] .status.error {
+      background: var(--error-glow); border-color: rgba(220,38,38,0.25); color: #991b1b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 3rem 1.25rem;
+      padding-top: 4.5rem;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+      background-size: 64px 64px;
+      pointer-events: none; z-index: 0;
+    }
+
+    body::after {
+      content: '';
+      position: fixed; top: -200px; left: 50%; transform: translateX(-50%);
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%);
+      pointer-events: none; z-index: 0;
+    }
+
+    .topnav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; gap: 0.25rem;
+      padding: 0.5rem 1.25rem;
+      background: rgba(9,9,11,0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    .topnav-brand {
+      font-size: 0.8125rem; font-weight: 700; color: var(--text);
+      margin-right: 1rem; text-decoration: none; letter-spacing: -0.02em;
+    }
+    .topnav-brand span {
+      background: linear-gradient(135deg, var(--accent-light), #c084fc);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .topnav a.nav-link {
+      font-size: 0.75rem; font-weight: 500; color: var(--text-muted);
+      text-decoration: none; padding: 0.375rem 0.75rem; border-radius: 8px;
+      transition: all var(--transition);
+    }
+    .topnav a.nav-link:hover { color: var(--text); background: var(--surface-hover); }
+    .topnav a.nav-link.active { color: var(--accent-light); background: var(--accent-glow); }
+
+    .container {
+      position: relative; z-index: 1; width: 100%; max-width: 960px;
+      display: flex; flex-direction: column; align-items: center;
+    }
+
+    header { text-align: center; margin-bottom: 2.5rem; }
+    .logo { display: inline-flex; align-items: center; gap: 0.6rem; margin-bottom: 0.75rem; }
+    .logo-icon {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, var(--accent), #a78bfa);
+      border-radius: 10px; display: flex; align-items: center; justify-content: center;
+    }
+    .logo-icon svg { width: 22px; height: 22px; stroke: white; fill: none; }
+    header h1 { font-size: 1.75rem; font-weight: 700; letter-spacing: -0.03em; }
+    header h1 span {
+      background: linear-gradient(135deg, var(--accent-light), #c084fc);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    header p { color: var(--text-muted); margin-top: 0.5rem; font-size: 0.875rem; }
+
+    .card {
+      background: var(--surface); backdrop-filter: blur(12px);
+      border: 1px solid var(--border); border-radius: var(--radius-lg);
+      padding: 1.5rem; width: 100%; margin-bottom: 1rem;
+      transition: border-color var(--transition);
+    }
+    .card:hover { border-color: var(--border-hover); }
+    .card-title {
+      font-size: 0.6875rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 1rem;
+    }
+
+    /* Tab bar */
+    .tab-bar {
+      display: flex; gap: 0.25rem; width: 100%; margin-bottom: 1rem;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 0.25rem; overflow-x: auto;
+    }
+    .tab-btn {
+      flex: 1; padding: 0.6rem 1rem; border: none; border-radius: 8px;
+      background: transparent; color: var(--text-muted); font-size: 0.8rem;
+      font-weight: 600; font-family: 'Inter', sans-serif; cursor: pointer;
+      transition: all var(--transition); white-space: nowrap;
+      letter-spacing: 0.02em;
+    }
+    .tab-btn:hover { color: var(--text); background: var(--surface-hover); }
+    .tab-btn.active { color: var(--accent-light); background: var(--accent-glow); }
+
+    .sub-tab-bar {
+      display: flex; gap: 0.25rem; margin-bottom: 1rem;
+      border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;
+    }
+    .sub-tab-btn {
+      padding: 0.4rem 0.75rem; border: none; border-radius: 6px;
+      background: transparent; color: var(--text-muted); font-size: 0.7rem;
+      font-weight: 500; font-family: 'Inter', sans-serif; cursor: pointer;
+      transition: all var(--transition);
+    }
+    .sub-tab-btn:hover { color: var(--text); }
+    .sub-tab-btn.active { color: var(--accent-light); background: var(--accent-glow); }
+
+    .tab-panel { display: none; width: 100%; }
+    .tab-panel.active { display: block; }
+
+    .row { display: flex; gap: 0.75rem; }
+    .row > * { flex: 1; }
+
+    label.field {
+      display: flex; flex-direction: column; gap: 0.4rem;
+      font-size: 0.75rem; color: var(--text-muted); font-weight: 500;
+    }
+
+    select, input[type="text"], input[type="number"], textarea {
+      appearance: none; background: var(--surface-solid);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      color: var(--text); padding: 0.625rem 0.875rem;
+      font-size: 0.8125rem; font-family: 'Inter', sans-serif;
+      transition: all var(--transition);
+    }
+    textarea {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;
+      resize: vertical; min-height: 60px;
+    }
+    select {
+      cursor: pointer;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2371717a'%3E%3Cpath d='M6 8.5L1 3.5h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 0.75rem center;
+      padding-right: 2.25rem;
+    }
+    select:hover, input:hover, textarea:hover { border-color: var(--border-hover); }
+    select:focus, input:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+    select option { background: var(--surface-solid); color: var(--text); }
+
+    input[type="range"] {
+      appearance: none; -webkit-appearance: none; background: transparent;
+      border: none; padding: 0; width: 100%; height: 20px; cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-track {
+      height: 4px; border-radius: 2px; background: var(--border);
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%;
+      background: var(--accent); margin-top: -6px; border: 2px solid var(--bg);
+    }
+
+    .btn {
+      width: 100%; padding: 0.8rem; border: none; border-radius: var(--radius);
+      background: linear-gradient(135deg, var(--accent), #7c3aed);
+      color: #fff; font-size: 0.875rem; font-weight: 600;
+      font-family: 'Inter', sans-serif; cursor: pointer;
+      transition: all var(--transition); position: relative; overflow: hidden; margin-top: 0.25rem;
+    }
+    .btn::before {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+      opacity: 0; transition: opacity var(--transition);
+    }
+    .btn:hover:not(:disabled)::before { opacity: 1; }
+    .btn:hover:not(:disabled) { box-shadow: 0 0 24px var(--accent-glow-strong); transform: translateY(-1px); }
+    .btn:active:not(:disabled) { transform: translateY(0) scale(0.99); }
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; background: rgba(255,255,255,0.08); color: var(--text-muted); }
+
+    .btn-sm {
+      width: auto; padding: 0.45rem 0.9rem; font-size: 0.75rem; margin-top: 0;
+    }
+
+    .btn-secondary {
+      padding: 0.6rem 1rem; border: 1px solid var(--border);
+      border-radius: var(--radius); background: var(--surface);
+      color: var(--text-secondary); font-size: 0.8125rem; font-weight: 500;
+      font-family: 'Inter', sans-serif; cursor: pointer; transition: all var(--transition);
+    }
+    .btn-secondary:hover { background: var(--surface-hover); border-color: var(--border-hover); color: var(--text); }
+
+    .btn-preset {
+      padding: 0.35rem 0.7rem; border: 1px solid var(--border); border-radius: 6px;
+      background: var(--surface); color: var(--text-muted); font-size: 0.65rem;
+      font-weight: 600; font-family: 'Inter', sans-serif; cursor: pointer;
+      transition: all var(--transition); text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .btn-preset:hover { background: var(--accent-glow); border-color: var(--accent); color: var(--accent-light); }
+
+    .status {
+      width: 100%; padding: 0.75rem 1rem; border-radius: var(--radius);
+      font-size: 0.8125rem; margin-top: 0.75rem; display: none;
+      align-items: center; gap: 0.5rem;
+    }
+    .status.error { display: flex; background: var(--error-glow); border: 1px solid rgba(239,68,68,0.25); color: #fca5a5; }
+    .status.success { display: flex; background: var(--success-glow); border: 1px solid rgba(34,197,94,0.25); color: #86efac; }
+    .status.loading { display: flex; background: var(--accent-glow); border: 1px solid rgba(99,102,241,0.25); color: var(--accent-light); }
+    .status.warning { display: flex; background: var(--warning-glow); border: 1px solid rgba(245,158,11,0.25); color: #fbbf24; }
+    .status-icon { flex-shrink: 0; width: 16px; height: 16px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .status.loading .status-icon { animation: spin 1s linear infinite; }
+
+    .result-section { display: none; width: 100%; margin-top: 1rem; }
+    .result-section.visible { display: block; }
+
+    .meta-row { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+    .meta-badge {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      padding: 0.35rem 0.75rem; border-radius: 8px; font-size: 0.7rem; font-weight: 500;
+      background: var(--surface); border: 1px solid var(--border); color: var(--text-secondary);
+    }
+    .meta-badge strong { color: var(--text); }
+    .meta-badge.warn { border-color: rgba(245,158,11,0.3); color: var(--warning); }
+    .meta-badge.pass { border-color: rgba(34,197,94,0.3); color: var(--success); }
+    .meta-badge.fail { border-color: rgba(239,68,68,0.3); color: var(--error); }
+
+    .props-table {
+      width: 100%; border-collapse: collapse; font-size: 0.75rem;
+    }
+    .props-table th, .props-table td {
+      padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border);
+    }
+    .props-table th {
+      color: var(--text-muted); font-weight: 600; font-size: 0.65rem;
+      text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .props-table td { color: var(--text-secondary); }
+    .props-table td:first-child { color: var(--text); font-weight: 500; }
+    .props-table td.val { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; }
+    .props-table .recommended { color: var(--accent-light); font-weight: 600; }
+
+    .warning-list {
+      list-style: none; padding: 0; margin: 0.5rem 0;
+    }
+    .warning-list li {
+      padding: 0.35rem 0.6rem; margin-bottom: 0.25rem; border-radius: 6px;
+      font-size: 0.7rem; font-weight: 500;
+      background: var(--warning-glow); border: 1px solid rgba(245,158,11,0.2);
+      color: var(--warning);
+    }
+
+    .thermo-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1rem; margin-bottom: 0.75rem;
+    }
+    .thermo-card h4 {
+      font-size: 0.7rem; font-weight: 600; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;
+    }
+    .thermo-vals {
+      display: flex; gap: 1.5rem; flex-wrap: wrap; font-size: 0.75rem;
+    }
+    .thermo-val label { color: var(--text-muted); font-size: 0.65rem; }
+    .thermo-val span { color: var(--text); font-family: 'JetBrains Mono', monospace; font-weight: 500; }
+
+    .ascii-art {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;
+      line-height: 1.6; color: var(--text-secondary); padding: 0.75rem;
+      background: var(--surface-solid); border-radius: 8px; overflow-x: auto;
+      white-space: pre; margin-top: 0.5rem;
+    }
+
+    /* Heatmap container */
+    #heatmapContainer { width: 100%; min-height: 300px; border-radius: var(--radius); overflow: hidden; }
+
+    /* Check results two-column */
+    .check-cols { display: flex; gap: 1rem; }
+    .check-cols > * { flex: 1; min-width: 0; }
+    .check-side-table {
+      width: 100%; border-collapse: collapse; font-size: 0.7rem;
+    }
+    .check-side-table th, .check-side-table td {
+      padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--border);
+    }
+    .check-side-table th {
+      color: var(--text-muted); font-weight: 600; font-size: 0.6rem;
+      text-transform: uppercase; text-align: left;
+    }
+    .check-side-table td { text-align: center; font-family: 'JetBrains Mono', monospace; }
+    .check-side-table td:first-child { text-align: left; color: var(--text); font-family: 'Inter', sans-serif; }
+
+    .amplicon-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1rem; margin-bottom: 0.5rem;
+    }
+    .amplicon-seq {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.65rem;
+      line-height: 1.8; word-break: break-all; color: var(--text-muted);
+      padding: 0.5rem; background: var(--surface-solid); border-radius: 6px;
+      margin-top: 0.5rem;
+    }
+    .amplicon-seq .fwd { color: var(--accent-light); font-weight: 600; }
+    .amplicon-seq .rev { color: var(--success); font-weight: 600; }
+
+    /* Design results */
+    .pair-row {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1rem; margin-bottom: 0.5rem;
+      cursor: pointer; transition: all var(--transition);
+    }
+    .pair-row:hover { border-color: var(--border-hover); }
+    .pair-header { display: flex; justify-content: space-between; align-items: center; }
+    .pair-rank {
+      font-size: 0.65rem; font-weight: 700; color: var(--accent-light);
+      text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .pair-meta { display: flex; gap: 1rem; font-size: 0.7rem; color: var(--text-muted); }
+    .pair-meta strong { color: var(--text); }
+    .pair-details { display: none; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border); }
+    .pair-details.open { display: block; }
+    .pair-seqs { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; margin: 0.5rem 0; }
+    .pair-seqs .fwd-seq { color: var(--accent-light); }
+    .pair-seqs .rev-seq { color: var(--success); }
+
+    /* BLAST results */
+    .blast-table {
+      width: 100%; border-collapse: collapse; font-size: 0.7rem;
+    }
+    .blast-table th, .blast-table td {
+      padding: 0.4rem 0.6rem; text-align: left; border-bottom: 1px solid var(--border);
+    }
+    .blast-table th {
+      color: var(--text-muted); font-weight: 600; font-size: 0.6rem;
+      text-transform: uppercase; position: sticky; top: 0;
+      background: var(--surface-solid);
+    }
+    .blast-table td { color: var(--text-secondary); font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; }
+    .blast-table a { color: var(--accent-light); text-decoration: none; }
+    .blast-table a:hover { text-decoration: underline; }
+    .blast-wrap { max-height: 400px; overflow: auto; border-radius: var(--radius); }
+
+    .download-row { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
+
+    .collapsible { width: 100%; margin-top: 0.75rem; }
+    .collapsible-trigger {
+      background: none; border: 1px solid var(--border); border-radius: var(--radius);
+      color: var(--text-secondary); cursor: pointer; font-size: 0.75rem;
+      font-family: 'Inter', sans-serif; font-weight: 500; padding: 0.625rem 1rem;
+      width: 100%; text-align: left; display: flex; align-items: center;
+      justify-content: space-between; transition: all var(--transition);
+    }
+    .collapsible-trigger:hover { background: var(--surface); border-color: var(--border-hover); color: var(--text); }
+    .collapsible-trigger.open { border-radius: var(--radius) var(--radius) 0 0; background: var(--surface); border-bottom-color: transparent; }
+    .collapsible-chevron { width: 14px; height: 14px; stroke: currentColor; transition: transform var(--transition); }
+    .collapsible-trigger.open .collapsible-chevron { transform: rotate(180deg); }
+    .collapsible-body {
+      display: none; background: var(--surface); border: 1px solid var(--border);
+      border-top: none; border-radius: 0 0 var(--radius) var(--radius); overflow: hidden;
+      padding: 1rem;
+    }
+    .collapsible-body.open { display: block; }
+
+    .advanced-toggle {
+      display: flex; align-items: center; gap: 0.4rem;
+      color: var(--text-muted); font-size: 0.7rem; font-weight: 500;
+      cursor: pointer; padding: 0.3rem 0; margin-top: 0.5rem; border: none; background: none;
+      font-family: 'Inter', sans-serif; transition: color var(--transition);
+    }
+    .advanced-toggle:hover { color: var(--text); }
+    .advanced-toggle svg { width: 12px; height: 12px; transition: transform var(--transition); }
+    .advanced-toggle.open svg { transform: rotate(180deg); }
+    .advanced-body { display: none; margin-top: 0.5rem; }
+    .advanced-body.open { display: block; }
+
+    .dropzone {
+      border: 1.5px dashed rgba(255,255,255,0.12); border-radius: var(--radius);
+      padding: 1.75rem 1rem; text-align: center; cursor: pointer;
+      transition: all var(--transition); position: relative; overflow: hidden;
+    }
+    .dropzone::before {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(circle at center, var(--accent-glow) 0%, transparent 70%);
+      opacity: 0; transition: opacity var(--transition);
+    }
+    .dropzone:hover::before, .dropzone.dragover::before { opacity: 1; }
+    .dropzone:hover, .dropzone.dragover { border-color: var(--accent); }
+    .dropzone.has-file { border-color: var(--success); border-style: solid; }
+    .dropzone.has-file::before {
+      background: radial-gradient(circle at center, var(--success-glow) 0%, transparent 70%);
+      opacity: 1;
+    }
+    .dropzone-content { position: relative; z-index: 1; }
+    .dropzone-icon {
+      width: 40px; height: 40px; margin: 0 auto 0.75rem; border-radius: 10px;
+      background: rgba(255,255,255,0.05);
+      display: flex; align-items: center; justify-content: center;
+      transition: all var(--transition);
+    }
+    .dropzone:hover .dropzone-icon { background: var(--accent-glow); }
+    .dropzone.has-file .dropzone-icon { background: var(--success-glow); }
+    .dropzone-icon svg { width: 20px; height: 20px; stroke: var(--text-muted); transition: stroke var(--transition); }
+    .dropzone:hover .dropzone-icon svg { stroke: var(--accent-light); }
+    .dropzone.has-file .dropzone-icon svg { stroke: var(--success); }
+    .dropzone p { color: var(--text-secondary); font-size: 0.75rem; }
+    .dropzone .filename { color: var(--text); font-weight: 600; font-size: 0.8rem; word-break: break-all; }
+    .dropzone .filesize { color: var(--text-muted); font-size: 0.7rem; margin-top: 0.15rem; }
+    .dropzone input { display: none; }
+
+    .theme-toggle {
+      position: fixed; top: 1rem; right: 1rem; z-index: 100;
+      background: var(--surface-solid); border: 1px solid var(--border);
+      border-radius: 50%; width: 36px; height: 36px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: all var(--transition); color: var(--text-muted);
+    }
+    .theme-toggle:hover { border-color: var(--accent); color: var(--accent-light); background: var(--accent-glow); }
+    .theme-toggle svg { width: 18px; height: 18px; }
+    .theme-toggle .icon-sun { display: none; }
+    [data-theme="light"] .theme-toggle .icon-moon { display: none; }
+    [data-theme="light"] .theme-toggle .icon-sun { display: block; }
+
+    footer {
+      margin-top: 2.5rem; color: var(--text-muted); font-size: 0.6875rem;
+      text-align: center; display: flex; align-items: center; gap: 0.5rem;
+    }
+    footer span { opacity: 0.3; }
+
+    @media (max-width: 700px) {
+      body { padding: 1.5rem 1rem; padding-top: 4rem; }
+      .row { flex-direction: column; }
+      .check-cols { flex-direction: column; }
+      .download-row { flex-direction: column; }
+      .tab-bar { overflow-x: auto; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="topnav">
+    <a class="topnav-brand" href="/"><span>Bio</span>Tools</a>
+    <a class="nav-link" href="/seqconvert">SeqConvert</a>
+    <a class="nav-link" href="/venn">Venn Diagram</a>
+    <a class="nav-link" href="/phylotree">PhyloTree</a>
+    <a class="nav-link" href="/pcoa">PCoA</a>
+    <a class="nav-link active" href="/primercheck">PrimerCheck</a>
+    <a class="nav-link" href="/diversity">Diversity</a>
+  </nav>
+  <button class="theme-toggle" id="themeToggle" title="Toggle light/dark mode">
+    <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0112.478 3.34a9.75 9.75 0 109.274 11.662z"/></svg>
+    <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1.5M12 19.5V21M4.219 4.219l1.061 1.061M17.72 17.72l1.06 1.06M3 12h1.5M19.5 12H21M4.219 19.781l1.061-1.061M17.72 6.28l1.06-1.06"/><circle cx="12" cy="12" r="4.5"/></svg>
+  </button>
+
+  <div class="container">
+    <header>
+      <div class="logo">
+        <div class="logo-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2L12 22"/>
+            <path d="M5 6c2-2 5-2 7 0s5 2 7 0"/>
+            <path d="M5 12c2-2 5-2 7 0s5 2 7 0"/>
+            <path d="M5 18c2-2 5-2 7 0s5 2 7 0"/>
+          </svg>
+        </div>
+        <h1><span>PrimerCheck</span></h1>
+      </div>
+      <p>Oligo analysis, primer design, in-silico PCR &amp; BLAST</p>
+    </header>
+
+    <!-- Shared input panel -->
+    <div class="card" id="sharedPanel">
+      <div class="card-title">Oligo input</div>
+      <label class="field" style="margin-bottom:0.75rem">
+        Oligo sequence (5' &rarr; 3')
+        <textarea id="oligoSeq" rows="2" placeholder="Enter primer/oligo sequence (IUPAC)..." spellcheck="false"></textarea>
+      </label>
+      <div class="row" style="margin-bottom:0.5rem">
+        <label class="field">
+          Oligo type
+          <select id="oligoType">
+            <option value="DNA" selected>DNA</option>
+            <option value="RNA">RNA</option>
+          </select>
+        </label>
+        <label class="field">
+          Hybridization target
+          <select id="targetType">
+            <option value="DNA" selected>DNA</option>
+            <option value="RNA">RNA</option>
+          </select>
+        </label>
+      </div>
+      <button class="advanced-toggle" id="advancedToggle">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+        Salt conditions
+      </button>
+      <div class="advanced-body" id="advancedBody">
+        <div class="row" style="margin-bottom:0.5rem">
+          <label class="field">
+            Oligo (nM)
+            <input type="number" id="oligoConc" value="250" min="1" step="1">
+          </label>
+          <label class="field">
+            Na+ (mM)
+            <input type="number" id="naConc" value="50" min="0" step="1">
+          </label>
+          <label class="field">
+            Mg2+ (mM)
+            <input type="number" id="mgConc" value="0" min="0" step="0.1">
+          </label>
+          <label class="field">
+            dNTP (mM)
+            <input type="number" id="dntpConc" value="0" min="0" step="0.1">
+          </label>
+        </div>
+        <button class="btn-preset" id="presetQpcr">qPCR preset</button>
+      </div>
+    </div>
+
+    <!-- Main tab bar -->
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="analyze">Analyze</button>
+      <button class="tab-btn" data-tab="check">Check</button>
+      <button class="tab-btn" data-tab="design">Design</button>
+      <button class="tab-btn" data-tab="blast">BLAST</button>
+    </div>
+
+    <!-- ═══════ ANALYZE TAB ═══════ -->
+    <div class="tab-panel active" id="tab-analyze">
+      <div class="sub-tab-bar">
+        <button class="sub-tab-btn active" data-subtab="properties">Properties</button>
+        <button class="sub-tab-btn" data-subtab="hairpin">Hairpin</button>
+        <button class="sub-tab-btn" data-subtab="selfdimer">Self-Dimer</button>
+        <button class="sub-tab-btn" data-subtab="heterodimer">Hetero-Dimer</button>
+        <button class="sub-tab-btn" data-subtab="tmmismatch">Tm Mismatch</button>
+      </div>
+
+      <!-- Properties sub-tab -->
+      <div class="tab-panel active" id="subtab-properties">
+        <button class="btn" id="btnAnalyze">Analyze Oligo</button>
+        <div class="status" id="statusAnalyze"></div>
+        <div class="result-section" id="resultAnalyze">
+          <div class="card">
+            <div class="card-title">Properties</div>
+            <div class="meta-row" id="analyzeMetaRow"></div>
+            <table class="props-table" id="analyzeTable"><tbody></tbody></table>
+            <ul class="warning-list" id="analyzeWarnings"></ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hairpin sub-tab -->
+      <div class="tab-panel" id="subtab-hairpin">
+        <button class="btn" id="btnHairpin">Check Hairpin</button>
+        <div class="status" id="statusHairpin"></div>
+        <div class="result-section" id="resultHairpin"></div>
+      </div>
+
+      <!-- Self-Dimer sub-tab -->
+      <div class="tab-panel" id="subtab-selfdimer">
+        <button class="btn" id="btnSelfdimer">Check Self-Dimer</button>
+        <div class="status" id="statusSelfdimer"></div>
+        <div class="result-section" id="resultSelfdimer"></div>
+      </div>
+
+      <!-- Hetero-Dimer sub-tab -->
+      <div class="tab-panel" id="subtab-heterodimer">
+        <div class="card" style="margin-bottom:0.75rem">
+          <label class="field">
+            Second oligo sequence (5' &rarr; 3')
+            <textarea id="oligoSeq2" rows="2" placeholder="Enter second oligo sequence..." spellcheck="false"></textarea>
+          </label>
+        </div>
+        <button class="btn" id="btnHeterodimer">Check Hetero-Dimer</button>
+        <div class="status" id="statusHeterodimer"></div>
+        <div class="result-section" id="resultHeterodimer"></div>
+      </div>
+
+      <!-- Tm Mismatch sub-tab -->
+      <div class="tab-panel" id="subtab-tmmismatch">
+        <button class="btn" id="btnMismatch">Generate Heatmap</button>
+        <div class="status" id="statusMismatch"></div>
+        <div class="result-section" id="resultMismatch">
+          <div class="card">
+            <div class="card-title">Tm Mismatch Heatmap</div>
+            <div id="heatmapContainer"></div>
+            <div class="download-row">
+              <button class="btn-secondary" id="dlMismatchCsv">Download CSV</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════ CHECK TAB ═══════ -->
+    <div class="tab-panel" id="tab-check">
+      <div class="card">
+        <div class="card-title">Primer pair &amp; template</div>
+        <div class="row" style="margin-bottom:0.75rem">
+          <label class="field">
+            Forward primer (5'&rarr;3')
+            <input type="text" id="checkFwd" placeholder="Forward primer sequence..." spellcheck="false">
+          </label>
+          <label class="field">
+            Reverse primer (5'&rarr;3')
+            <input type="text" id="checkRev" placeholder="Reverse primer sequence..." spellcheck="false">
+          </label>
+        </div>
+        <label class="field" style="margin-bottom:0.75rem">
+          Template sequence (plain or FASTA)
+          <textarea id="checkTemplate" rows="4" placeholder="Paste template sequence or FASTA..." spellcheck="false"></textarea>
+        </label>
+        <div class="dropzone" id="dzTemplate" style="margin-bottom:0.75rem">
+          <div class="dropzone-content">
+            <div class="dropzone-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
+              </svg>
+            </div>
+            <p>Or drop a FASTA file here</p>
+          </div>
+          <input type="file" id="templateFileInput" accept=".fa,.fasta,.fna,.txt">
+        </div>
+        <label class="field">
+          Max mismatches: <strong id="mmVal">2</strong>
+          <input type="range" id="checkMM" min="0" max="5" value="2">
+        </label>
+      </div>
+      <button class="btn" id="btnCheck">Run In-Silico PCR</button>
+      <div class="status" id="statusCheck"></div>
+      <div class="result-section" id="resultCheck"></div>
+    </div>
+
+    <!-- ═══════ DESIGN TAB ═══════ -->
+    <div class="tab-panel" id="tab-design">
+      <div class="card">
+        <div class="card-title">Template &amp; parameters</div>
+        <label class="field" style="margin-bottom:0.75rem">
+          Template sequence (plain or FASTA)
+          <textarea id="designTemplate" rows="4" placeholder="Paste template sequence or FASTA..." spellcheck="false"></textarea>
+        </label>
+        <div class="dropzone" id="dzDesignTemplate" style="margin-bottom:0.75rem">
+          <div class="dropzone-content">
+            <div class="dropzone-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
+              </svg>
+            </div>
+            <p>Or drop a FASTA file here</p>
+          </div>
+          <input type="file" id="designFileInput" accept=".fa,.fasta,.fna,.txt">
+        </div>
+        <div class="row" style="margin-bottom:0.5rem">
+          <label class="field">
+            Target start (optional)
+            <input type="number" id="designTargetStart" placeholder="e.g. 100" min="0">
+          </label>
+          <label class="field">
+            Target end (optional)
+            <input type="number" id="designTargetEnd" placeholder="e.g. 200" min="0">
+          </label>
+        </div>
+        <div class="row" style="margin-bottom:0.5rem">
+          <label class="field">
+            Amplicon min (bp)
+            <input type="number" id="designMinSize" value="100" min="30">
+          </label>
+          <label class="field">
+            Amplicon max (bp)
+            <input type="number" id="designMaxSize" value="500" min="50">
+          </label>
+        </div>
+        <div class="row" style="margin-bottom:0.5rem">
+          <label class="field">
+            Primer length min
+            <input type="number" id="designMinLen" value="18" min="10">
+          </label>
+          <label class="field">
+            Optimal
+            <input type="number" id="designOptLen" value="20" min="10">
+          </label>
+          <label class="field">
+            Max
+            <input type="number" id="designMaxLen" value="25" min="10">
+          </label>
+        </div>
+        <div class="row" style="margin-bottom:0.5rem">
+          <label class="field">
+            Tm min (&deg;C)
+            <input type="number" id="designMinTm" value="57" step="0.5">
+          </label>
+          <label class="field">
+            Optimal
+            <input type="number" id="designOptTm" value="60" step="0.5">
+          </label>
+          <label class="field">
+            Max
+            <input type="number" id="designMaxTm" value="63" step="0.5">
+          </label>
+        </div>
+        <div class="row" style="margin-bottom:0.5rem">
+          <label class="field">
+            GC min (%)
+            <input type="number" id="designMinGc" value="40" min="0" max="100">
+          </label>
+          <label class="field">
+            GC max (%)
+            <input type="number" id="designMaxGc" value="60" min="0" max="100">
+          </label>
+          <label class="field">
+            Max Tm diff (&deg;C)
+            <input type="number" id="designMaxTmDiff" value="3" step="0.5" min="0">
+          </label>
+        </div>
+        <div class="row">
+          <label class="field">
+            Number of pairs
+            <input type="number" id="designNumPairs" value="5" min="1" max="10">
+          </label>
+          <label class="field">
+            Exclude regions (start,len,...)
+            <input type="text" id="designExcluded" placeholder="e.g. 50,10,200,20">
+          </label>
+        </div>
+      </div>
+      <button class="btn" id="btnDesign">Design Primers</button>
+      <div class="status" id="statusDesign"></div>
+      <div class="result-section" id="resultDesign"></div>
+    </div>
+
+    <!-- ═══════ BLAST TAB ═══════ -->
+    <div class="tab-panel" id="tab-blast">
+      <div class="card">
+        <div class="card-title">NCBI BLAST</div>
+        <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.75rem">
+          Submits the oligo sequence to NCBI BLAST (blastn, short sequence parameters).
+          Requires internet. May take 30&ndash;60 seconds.
+        </p>
+      </div>
+      <button class="btn" id="btnBlast">Run BLAST</button>
+      <div class="status" id="statusBlast"></div>
+      <div class="result-section" id="resultBlast"></div>
+    </div>
+
+    <footer>
+      BioTools &ndash; PrimerCheck
+      <span>&middot;</span>
+      primer3-py &amp; NCBI BLAST
+    </footer>
+  </div>
+
+<script>
+  // ── Shared state ──
+  const oligoSeq = document.getElementById('oligoSeq');
+  const oligoType = document.getElementById('oligoType');
+  const targetType = document.getElementById('targetType');
+  const oligoConc = document.getElementById('oligoConc');
+  const naConc = document.getElementById('naConc');
+  const mgConc = document.getElementById('mgConc');
+  const dntpConc = document.getElementById('dntpConc');
+
+  function getSaltParams() {
+    return {
+      oligo_conc: parseFloat(oligoConc.value) || 250,
+      na_conc: parseFloat(naConc.value) || 50,
+      mg_conc: parseFloat(mgConc.value) || 0,
+      dntp_conc: parseFloat(dntpConc.value) || 0,
+    };
+  }
+
+  function getBasePayload() {
+    return {
+      sequence: oligoSeq.value.trim(),
+      oligo_type: oligoType.value,
+      target_type: targetType.value,
+      ...getSaltParams(),
+    };
+  }
+
+  // ── Auto-convert U↔T ──
+  oligoType.addEventListener('change', () => {
+    let v = oligoSeq.value.toUpperCase();
+    oligoSeq.value = oligoType.value === 'RNA' ? v.replace(/T/g, 'U') : v.replace(/U/g, 'T');
+  });
+
+  // ── qPCR preset ──
+  document.getElementById('presetQpcr').addEventListener('click', () => {
+    mgConc.value = '3'; naConc.value = '50'; oligoConc.value = '250'; dntpConc.value = '0.8';
+  });
+
+  // ── Advanced toggle ──
+  document.getElementById('advancedToggle').addEventListener('click', function() {
+    this.classList.toggle('open');
+    document.getElementById('advancedBody').classList.toggle('open');
+  });
+
+  // ── Tab switching ──
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.container > .tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  // Sub-tab switching within Analyze
+  document.querySelectorAll('.sub-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.sub-tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('#tab-analyze > .tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('subtab-' + btn.dataset.subtab).classList.add('active');
+    });
+  });
+
+  // ── Status helpers ──
+  const statusIcons = {
+    loading: '<svg class="status-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>',
+    success: '<svg class="status-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>',
+    error: '<svg class="status-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg>',
+    warning: '<svg class="status-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z"/></svg>',
+  };
+  function showStatus(el, type, msg) {
+    el.className = `status ${type}`;
+    el.innerHTML = `${statusIcons[type]||''}<span>${msg}</span>`;
+  }
+  function clearStatus(el) { el.className = 'status'; el.innerHTML = ''; }
+
+  function downloadBlob(content, filename, mime) {
+    const blob = new Blob([content], { type: mime });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  // ── API helper ──
+  async function apiPost(url, payload) {
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
+    return data;
+  }
+
+  // ═══════ ANALYZE — Properties ═══════
+  document.getElementById('btnAnalyze').addEventListener('click', async () => {
+    const st = document.getElementById('statusAnalyze');
+    const res = document.getElementById('resultAnalyze');
+    res.classList.remove('visible');
+    showStatus(st, 'loading', 'Analyzing oligo\u2026');
+
+    try {
+      const data = await apiPost('/api/primercheck/analyze', getBasePayload());
+      clearStatus(st);
+
+      // Meta badges
+      const mr = document.getElementById('analyzeMetaRow');
+      mr.innerHTML = '';
+      [
+        { l: 'Length', v: data.length + ' nt' },
+        { l: 'GC', v: data.gc_content + '%', cls: data.gc_content < 40 || data.gc_content > 60 ? 'warn' : 'pass' },
+        { l: 'Tm (rec)', v: data.recommended_tm + '\u00b0C' },
+        { l: 'MW', v: data.molecular_weight.toLocaleString() + ' g/mol' },
+      ].forEach(b => {
+        const el = document.createElement('div');
+        el.className = 'meta-badge' + (b.cls ? ' ' + b.cls : '');
+        el.innerHTML = `${b.l}: <strong>${b.v}</strong>`;
+        mr.appendChild(el);
+      });
+
+      // Properties table
+      const tbody = document.querySelector('#analyzeTable tbody');
+      tbody.innerHTML = '';
+      const rows = [
+        ['Sequence', `<code>${data.sequence}</code>`],
+        ['Length', data.length + ' nt'],
+        ['GC Content', data.gc_content + '%'],
+        ['Molecular Weight', data.molecular_weight.toLocaleString() + ' g/mol'],
+        ['Extinction Coeff. (\u03b5\u2082\u2086\u2080)', data.extinction_coefficient.toLocaleString() + ' L/(mol\u00b7cm)'],
+        ['\u00b5g/OD\u2082\u2086\u2080', data.ug_per_od260],
+        ['nmol/OD\u2082\u2086\u2080', data.nmol_per_od260],
+        ['Tm \u2014 Wallace rule' + (data.tm_wallace_warning ? ' \u26a0' : ''), data.tm_wallace + '\u00b0C'],
+        ['Tm \u2014 Basic NN (SantaLucia 1998)', data.tm_basic_nn + '\u00b0C'],
+        ['Tm \u2014 Salt-corrected NN', data.tm_salt_corrected != null ? data.tm_salt_corrected + '\u00b0C' : 'N/A'],
+      ];
+      if (data.tm_mg_corrected != null) {
+        rows.push(['Tm \u2014 Mg\u00b2\u207a corrected', data.tm_mg_corrected + '\u00b0C']);
+      }
+      rows.push(['Recommended Tm', `<span class="recommended">${data.recommended_tm}\u00b0C</span>`]);
+      rows.push(["3' GC Clamp", data.gc_clamp_ok ? `OK (${data.gc_clamp_count} G/C in last 5)` : `Warn (${data.gc_clamp_count} G/C in last 5)`]);
+
+      rows.forEach(([label, val]) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${label}</td><td class="val">${val}</td>`;
+        tbody.appendChild(tr);
+      });
+
+      // Warnings
+      const wl = document.getElementById('analyzeWarnings');
+      wl.innerHTML = '';
+      (data.warnings || []).forEach(w => {
+        const li = document.createElement('li');
+        li.textContent = w.message;
+        wl.appendChild(li);
+      });
+
+      res.classList.add('visible');
+    } catch (e) {
+      showStatus(st, 'error', e.message);
+    }
+  });
+
+  // ═══════ ANALYZE — Hairpin ═══════
+  document.getElementById('btnHairpin').addEventListener('click', async () => {
+    const st = document.getElementById('statusHairpin');
+    const res = document.getElementById('resultHairpin');
+    res.classList.remove('visible');
+    showStatus(st, 'loading', 'Checking hairpin\u2026');
+
+    try {
+      const data = await apiPost('/api/primercheck/hairpin', getBasePayload());
+      clearStatus(st);
+
+      let html = '<div class="thermo-card">';
+      html += '<h4>Hairpin thermodynamics</h4>';
+      html += `<div class="thermo-vals">
+        <div class="thermo-val"><label>\u0394G</label> <span>${data.dg} kcal/mol</span></div>
+        <div class="thermo-val"><label>\u0394H</label> <span>${data.dh} kcal/mol</span></div>
+        <div class="thermo-val"><label>\u0394S</label> <span>${data.ds} cal/(mol\u00b7K)</span></div>
+        <div class="thermo-val"><label>Tm</label> <span>${data.tm}\u00b0C</span></div>
+      </div>`;
+      if (data.warning) html += `<ul class="warning-list"><li>${data.warning_message}</li></ul>`;
+      if (data.length_warning) html += `<ul class="warning-list"><li>${data.length_warning}</li></ul>`;
+      html += '</div>';
+
+      res.innerHTML = '<div class="card">' + html + '</div>';
+      res.classList.add('visible');
+    } catch (e) {
+      showStatus(st, 'error', e.message);
+    }
+  });
+
+  // ═══════ ANALYZE — Self-Dimer ═══════
+  document.getElementById('btnSelfdimer').addEventListener('click', async () => {
+    const st = document.getElementById('statusSelfdimer');
+    const res = document.getElementById('resultSelfdimer');
+    res.classList.remove('visible');
+    showStatus(st, 'loading', 'Checking self-dimer\u2026');
+
+    try {
+      const data = await apiPost('/api/primercheck/selfdimer', getBasePayload());
+      clearStatus(st);
+
+      let html = '<div class="thermo-card">';
+      html += '<h4>Self-Dimer thermodynamics</h4>';
+      html += `<div class="thermo-vals">
+        <div class="thermo-val"><label>\u0394G</label> <span>${data.dg} kcal/mol</span></div>
+        <div class="thermo-val"><label>\u0394H</label> <span>${data.dh} kcal/mol</span></div>
+        <div class="thermo-val"><label>\u0394S</label> <span>${data.ds} cal/(mol\u00b7K)</span></div>
+        <div class="thermo-val"><label>Tm</label> <span>${data.tm}\u00b0C</span></div>
+      </div>`;
+      if (data.warning) html += `<ul class="warning-list"><li>${data.warning_message}</li></ul>`;
+      if (data.three_prime_involved) html += `<ul class="warning-list"><li>3' end involved in dimer (problematic for PCR)</li></ul>`;
+      if (data.alignment) {
+        html += `<div class="ascii-art">${data.alignment.top}\n${data.alignment.middle}\n${data.alignment.bottom}</div>`;
+      }
+      html += '</div>';
+
+      res.innerHTML = '<div class="card">' + html + '</div>';
+      res.classList.add('visible');
+    } catch (e) {
+      showStatus(st, 'error', e.message);
+    }
+  });
+
+  // ═══════ ANALYZE — Hetero-Dimer ═══════
+  document.getElementById('btnHeterodimer').addEventListener('click', async () => {
+    const st = document.getElementById('statusHeterodimer');
+    const res = document.getElementById('resultHeterodimer');
+    res.classList.remove('visible');
+    showStatus(st, 'loading', 'Checking hetero-dimer\u2026');
+
+    try {
+      const payload = getBasePayload();
+      payload.sequence2 = document.getElementById('oligoSeq2').value.trim();
+      const data = await apiPost('/api/primercheck/heterodimer', payload);
+      clearStatus(st);
+
+      let html = '<div class="thermo-card">';
+      html += '<h4>Hetero-Dimer thermodynamics</h4>';
+      html += `<div class="thermo-vals">
+        <div class="thermo-val"><label>\u0394G</label> <span>${data.dg} kcal/mol</span></div>
+        <div class="thermo-val"><label>\u0394H</label> <span>${data.dh} kcal/mol</span></div>
+        <div class="thermo-val"><label>\u0394S</label> <span>${data.ds} cal/(mol\u00b7K)</span></div>
+        <div class="thermo-val"><label>Tm</label> <span>${data.tm}\u00b0C</span></div>
+      </div>`;
+      if (data.warning) html += `<ul class="warning-list"><li>${data.warning_message}</li></ul>`;
+      if (data.three_prime_involved_seq1) html += `<ul class="warning-list"><li>3' end of oligo 1 involved</li></ul>`;
+      if (data.three_prime_involved_seq2) html += `<ul class="warning-list"><li>3' end of oligo 2 involved</li></ul>`;
+      if (data.alignment) {
+        html += `<div class="ascii-art">${data.alignment.top}\n${data.alignment.middle}\n${data.alignment.bottom}</div>`;
+      }
+      html += '</div>';
+
+      res.innerHTML = '<div class="card">' + html + '</div>';
+      res.classList.add('visible');
+    } catch (e) {
+      showStatus(st, 'error', e.message);
+    }
+  });
+
+  // ═══════ ANALYZE — Tm Mismatch Heatmap ═══════
+  let mismatchData = null;
+  document.getElementById('btnMismatch').addEventListener('click', async () => {
+    const st = document.getElementById('statusMismatch');
+    const res = document.getElementById('resultMismatch');
+    res.classList.remove('visible');
+    showStatus(st, 'loading', 'Calculating mismatches\u2026');
+
+    try {
+      const data = await apiPost('/api/primercheck/tmmismatch', getBasePayload());
+      mismatchData = data;
+      clearStatus(st);
+      renderHeatmap(data);
+      res.classList.add('visible');
+    } catch (e) {
+      showStatus(st, 'error', e.message);
+    }
+  });
+
+  function isLight() { return document.documentElement.getAttribute('data-theme') === 'light'; }
+
+  function renderHeatmap(data) {
+    const light = isLight();
+    const fg = light ? '#18181b' : '#fafafa';
+    const bg = light ? '#ffffff' : '#131316';
+
+    const xLabels = data.positions.map((p, i) => `${p} (${data.sequence[i]})`);
+
+    const trace = {
+      z: data.heatmap,
+      x: xLabels,
+      y: data.bases,
+      type: 'heatmap',
+      colorscale: [[0, '#3b82f6'], [0.5, '#fbbf24'], [1, '#ef4444']],
+      hovertemplate: 'Position: %{x}<br>Base: %{y}<br>Tm: %{z:.1f}\u00b0C<extra></extra>',
+      colorbar: { title: 'Tm (\u00b0C)', titlefont: { color: fg }, tickfont: { color: fg } },
+    };
+
+    const layout = {
+      paper_bgcolor: bg, plot_bgcolor: bg,
+      font: { color: fg, family: 'Inter, sans-serif', size: 11 },
+      margin: { l: 40, r: 20, t: 30, b: 80 },
+      xaxis: { title: 'Position (original base)', color: fg, tickangle: -45, tickfont: { size: 9 } },
+      yaxis: { title: 'Substituted base', color: fg },
+    };
+
+    Plotly.newPlot(document.getElementById('heatmapContainer'), [trace], layout, { responsive: true });
+  }
+
+  document.getElementById('dlMismatchCsv').addEventListener('click', () => {
+    if (!mismatchData) return;
+    let csv = 'Position,Original_Base,Substituted_Base,Tm,Delta_Tm\n';
+    mismatchData.table.forEach(r => {
+      csv += `${r.position},${r.original_base},${r.substituted_base},${r.tm},${r.delta_tm}\n`;
+    });
+    downloadBlob(csv, 'tm_mismatch.csv', 'text/csv');
+  });
+
+  // ═══════ CHECK — In-Silico PCR ═══════
+  const checkMM = document.getElementById('checkMM');
+  const mmVal = document.getElementById('mmVal');
+  checkMM.addEventListener('input', () => { mmVal.textContent = checkMM.value; });
+
+  // Template file drag-drop
+  const dzTemplate = document.getElementById('dzTemplate');
+  const templateFileInput = document.getElementById('templateFileInput');
+  const checkTemplate = document.getElementById('checkTemplate');
+
+  function setupDropzone(dz, input, onFile) {
+    dz.addEventListener('click', () => input.click());
+    dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+    dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+    dz.addEventListener('drop', e => {
+      e.preventDefault(); dz.classList.remove('dragover');
+      if (e.dataTransfer.files.length) onFile(e.dataTransfer.files[0], dz);
+    });
+    input.addEventListener('change', () => { if (input.files.length) onFile(input.files[0], dz); });
+  }
+
+  function showFileInDz(file, dz) {
+    dz.classList.add('has-file');
+    const size = file.size < 1024*1024 ? (file.size/1024).toFixed(1)+' KB' : (file.size/(1024*1024)).toFixed(2)+' MB';
+    const content = dz.querySelector('.dropzone-content');
+    const pEl = content.querySelector('p');
+    pEl.innerHTML = `<span class="filename">${file.name}</span><span class="filesize">${size}</span>`;
+  }
+
+  setupDropzone(dzTemplate, templateFileInput, (f, dz) => {
+    showFileInDz(f, dz);
+    const reader = new FileReader();
+    reader.onload = e => { checkTemplate.value = e.target.result; };
+    reader.readAsText(f);
+  });
+
+  // Design template file
+  const dzDesignTemplate = document.getElementById('dzDesignTemplate');
+  const designFileInput = document.getElementById('designFileInput');
+  const designTemplate = document.getElementById('designTemplate');
+
+  setupDropzone(dzDesignTemplate, designFileInput, (f, dz) => {
+    showFileInDz(f, dz);
+    const reader = new FileReader();
+    reader.onload = e => { designTemplate.value = e.target.result; };
+    reader.readAsText(f);
+  });
+
+  document.getElementById('btnCheck').addEventListener('click', async () => {
+    const st = document.getElementById('statusCheck');
+    const res = document.getElementById('resultCheck');
+    res.classList.remove('visible');
+    showStatus(st, 'loading', 'Running in-silico PCR\u2026');
+
+    const payload = {
+      forward_primer: document.getElementById('checkFwd').value.trim(),
+      reverse_primer: document.getElementById('checkRev').value.trim(),
+      template: checkTemplate.value.trim(),
+      max_mismatches: parseInt(checkMM.value),
+      oligo_type: oligoType.value,
+      ...getSaltParams(),
+    };
+
+    try {
+      const data = await apiPost('/api/primercheck/check', payload);
+
+      // Warnings
+      if (data.warnings && data.warnings.length) {
+        showStatus(st, 'warning', data.warnings.join(' | '));
+      } else {
+        showStatus(st, 'success', `Found ${data.amplicons.length} amplicon(s) on ${data.template_length} bp template`);
+      }
+
+      let html = '<div class="check-cols">';
+
+      // Left: primer properties
+      html += '<div class="card"><div class="card-title">Primer properties</div>';
+      html += '<table class="check-side-table"><thead><tr><th>Property</th><th>Forward</th><th>Reverse</th></tr></thead><tbody>';
+      const fa = data.forward.analysis, ra = data.reverse.analysis;
+      const compRows = [
+        ['Sequence', `<code style="font-size:0.6rem">${fa.sequence}</code>`, `<code style="font-size:0.6rem">${ra.sequence}</code>`],
+        ['Length', fa.length + ' nt', ra.length + ' nt'],
+        ['GC%', fa.gc_content + '%', ra.gc_content + '%'],
+        ['Tm (rec)', (fa.recommended_tm || '-') + '\u00b0C', (ra.recommended_tm || '-') + '\u00b0C'],
+        ['Tm Wallace', fa.tm_wallace + '\u00b0C', ra.tm_wallace + '\u00b0C'],
+        ['Tm Salt NN', (fa.tm_salt_corrected || '-') + '\u00b0C', (ra.tm_salt_corrected || '-') + '\u00b0C'],
+        ['\u0394Tm', data.tm_difference + '\u00b0C', ''],
+        ['Hairpin \u0394G', data.forward.hairpin.dg + ' kcal/mol', data.reverse.hairpin.dg + ' kcal/mol'],
+        ['Self-dimer \u0394G', data.forward.homodimer.dg + ' kcal/mol', data.reverse.homodimer.dg + ' kcal/mol'],
+        ['Hetero-dimer \u0394G', data.heterodimer.dg + ' kcal/mol', ''],
+      ];
+      compRows.forEach(([label, fv, rv]) => {
+        html += `<tr><td>${label}</td><td>${fv}</td><td>${rv}</td></tr>`;
+      });
+      html += '</tbody></table>';
+
+      // Warnings
+      const allWarnings = [...(fa.warnings || []), ...(ra.warnings || [])];
+      if (allWarnings.length) {
+        html += '<ul class="warning-list">';
+        allWarnings.forEach(w => { html += `<li>${w.message}</li>`; });
+        html += '</ul>';
+      }
+      html += '</div>';
+
+      // Right: amplicons
+      html += '<div class="card"><div class="card-title">Amplicons (' + data.amplicons.length + ')</div>';
+      if (data.amplicons.length === 0) {
+        html += '<p style="color:var(--text-muted); font-size:0.75rem">No amplicons found. Try increasing mismatch threshold.</p>';
+      } else {
+        data.amplicons.forEach((amp, i) => {
+          html += `<div class="amplicon-card">`;
+          html += `<div style="display:flex;justify-content:space-between;font-size:0.7rem">`;
+          html += `<span style="color:var(--text);font-weight:600">Amplicon ${i+1}</span>`;
+          html += `<span style="color:var(--text-muted)">${amp.amplicon_size} bp</span>`;
+          html += `</div>`;
+          html += `<div style="font-size:0.65rem;color:var(--text-muted);margin-top:0.25rem">`;
+          html += `Fwd pos: ${amp.fwd_position} (${amp.fwd_mismatches} mm) &bull; Rev pos: ${amp.rev_position} (${amp.rev_mismatches} mm)`;
+          html += `</div>`;
+
+          // Show amplicon sequence with primers highlighted
+          const seq = amp.amplicon_sequence;
+          const fLen = data.forward.sequence.length;
+          const rLen = data.reverse.sequence.length;
+          const fPart = seq.substring(0, fLen);
+          const mid = seq.substring(fLen, seq.length - rLen);
+          const rPart = seq.substring(seq.length - rLen);
+          html += `<div class="amplicon-seq"><span class="fwd">${fPart}</span>${mid}<span class="rev">${rPart}</span></div>`;
+          html += `</div>`;
+        });
+
+        html += '<div class="download-row">';
+        html += '<button class="btn-secondary" onclick="downloadCheckCsv()">Primer Report CSV</button>';
+        html += '<button class="btn-secondary" onclick="downloadAmpliconFasta()">Amplicons FASTA</button>';
+        html += '</div>';
+      }
+      html += '</div>';
+      html += '</div>';
+
+      res.innerHTML = html;
+      res.classList.add('visible');
+
+      // Store for downloads
+      window._checkData = data;
+    } catch (e) {
+      showStatus(st, 'error', e.message);
+    }
+  });
+
+  window.downloadCheckCsv = function() {
+    const d = window._checkData;
+    if (!d) return;
+    const fa = d.forward.analysis, ra = d.reverse.analysis;
+    let csv = 'Property,Forward,Reverse\n';
+    csv += `Sequence,${fa.sequence},${ra.sequence}\n`;
+    csv += `Length,${fa.length},${ra.length}\n`;
+    csv += `GC%,${fa.gc_content},${ra.gc_content}\n`;
+    csv += `Tm Recommended,${fa.recommended_tm},${ra.recommended_tm}\n`;
+    csv += `Hairpin dG,${d.forward.hairpin.dg},${d.reverse.hairpin.dg}\n`;
+    csv += `Self-dimer dG,${d.forward.homodimer.dg},${d.reverse.homodimer.dg}\n`;
+    csv += `Hetero-dimer dG,${d.heterodimer.dg},\n`;
+    downloadBlob(csv, 'primer_report.csv', 'text/csv');
+  };
+
+  window.downloadAmpliconFasta = function() {
+    const d = window._checkData;
+    if (!d) return;
+    let fasta = '';
+    d.amplicons.forEach((a, i) => {
+      fasta += `>amplicon_${i+1}_${a.amplicon_size}bp_pos${a.fwd_position}-${a.rev_position}\n`;
+      // Wrap at 80 chars
+      for (let j = 0; j < a.amplicon_sequence.length; j += 80) {
+        fasta += a.amplicon_sequence.substring(j, j + 80) + '\n';
+      }
+    });
+    downloadBlob(fasta, 'amplicons.fasta', 'text/plain');
+  };
+
+  // ═══════ DESIGN — Primer3 ═══════
+  document.getElementById('btnDesign').addEventListener('click', async () => {
+    const st = document.getElementById('statusDesign');
+    const res = document.getElementById('resultDesign');
+    res.classList.remove('visible');
+    showStatus(st, 'loading', 'Designing primers\u2026');
+
+    const tStart = document.getElementById('designTargetStart').value;
+    const tEnd = document.getElementById('designTargetEnd').value;
+
+    const payload = {
+      template: designTemplate.value.trim(),
+      min_size: document.getElementById('designMinSize').value,
+      max_size: document.getElementById('designMaxSize').value,
+      min_length: document.getElementById('designMinLen').value,
+      opt_length: document.getElementById('designOptLen').value,
+      max_length: document.getElementById('designMaxLen').value,
+      min_tm: document.getElementById('designMinTm').value,
+      opt_tm: document.getElementById('designOptTm').value,
+      max_tm: document.getElementById('designMaxTm').value,
+      min_gc: document.getElementById('designMinGc').value,
+      max_gc: document.getElementById('designMaxGc').value,
+      max_tm_diff: document.getElementById('designMaxTmDiff').value,
+      num_pairs: document.getElementById('designNumPairs').value,
+      excluded_regions: document.getElementById('designExcluded').value.trim(),
+      ...getSaltParams(),
+    };
+
+    if (tStart && tEnd) {
+      payload.target_start = parseInt(tStart);
+      payload.target_length = parseInt(tEnd) - parseInt(tStart);
+    }
+
+    try {
+      const data = await apiPost('/api/primercheck/design', payload);
+      window._designData = data;
+
+      if (data.num_returned === 0) {
+        showStatus(st, 'warning', 'No primer pairs found');
+      } else {
+        showStatus(st, 'success', `Found ${data.num_returned} primer pair(s)`);
+      }
+
+      let html = '';
+
+      if (data.suggestions && data.suggestions.length) {
+        html += '<div class="card"><ul class="warning-list">';
+        data.suggestions.forEach(s => { html += `<li>${s}</li>`; });
+        html += '</ul></div>';
+      }
+
+      // Primer pairs
+      data.pairs.forEach((pair, idx) => {
+        html += `<div class="pair-row" onclick="this.querySelector('.pair-details').classList.toggle('open')">`;
+        html += `<div class="pair-header">`;
+        html += `<span class="pair-rank">Pair ${pair.rank}</span>`;
+        html += `<div class="pair-meta">`;
+        html += `<span>Size: <strong>${pair.product_size} bp</strong></span>`;
+        html += `<span>Fwd Tm: <strong>${pair.forward.tm}\u00b0C</strong></span>`;
+        html += `<span>Rev Tm: <strong>${pair.reverse.tm}\u00b0C</strong></span>`;
+        html += `<span>Penalty: <strong>${pair.penalty}</strong></span>`;
+        html += `</div></div>`;
+
+        html += `<div class="pair-details">`;
+        html += `<div class="pair-seqs">`;
+        html += `Fwd: <span class="fwd-seq">${pair.forward.sequence}</span> (pos ${pair.forward.start}, ${pair.forward.length}nt, GC ${pair.forward.gc_percent}%)<br>`;
+        html += `Rev: <span class="rev-seq">${pair.reverse.sequence}</span> (pos ${pair.reverse.start}, ${pair.reverse.length}nt, GC ${pair.reverse.gc_percent}%)`;
+        html += `</div>`;
+
+        html += `<div style="font-size:0.65rem; color:var(--text-muted); margin-top:0.5rem">`;
+        html += `Fwd hairpin: ${pair.forward.hairpin_th}\u00b0C | Self-any: ${pair.forward.self_any_th}\u00b0C | Self-end: ${pair.forward.self_end_th}\u00b0C<br>`;
+        html += `Rev hairpin: ${pair.reverse.hairpin_th}\u00b0C | Self-any: ${pair.reverse.self_any_th}\u00b0C | Self-end: ${pair.reverse.self_end_th}\u00b0C<br>`;
+        html += `Pair compl-any: ${pair.compl_any_th}\u00b0C | Pair compl-end: ${pair.compl_end_th}\u00b0C`;
+        html += `</div>`;
+
+        html += `<button class="btn btn-sm" style="margin-top:0.5rem;width:auto" onclick="event.stopPropagation(); sendToCheck(${idx})">Send to Check tab</button>`;
+        html += `</div>`;
+        html += `</div>`;
+      });
+
+      // Explain text
+      if (data.explain && Object.keys(data.explain).length) {
+        html += '<div class="collapsible"><button class="collapsible-trigger" onclick="this.classList.toggle(\'open\');this.nextElementSibling.classList.toggle(\'open\')">Primer3 Explain';
+        html += '<svg class="collapsible-chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>';
+        html += '</button><div class="collapsible-body"><div class="ascii-art">';
+        for (const [k, v] of Object.entries(data.explain)) {
+          html += `${k}: ${v}\n`;
+        }
+        html += '</div></div></div>';
+      }
+
+      // Downloads
+      html += '<div class="download-row">';
+      html += '<button class="btn-secondary" onclick="downloadDesignCsv()">Download CSV</button>';
+      html += '<button class="btn-secondary" onclick="downloadDesignFasta()">Download FASTA</button>';
+      html += '</div>';
+
+      res.innerHTML = html;
+      res.classList.add('visible');
+    } catch (e) {
+      showStatus(st, 'error', e.message);
+    }
+  });
+
+  window.sendToCheck = function(idx) {
+    const pair = window._designData.pairs[idx];
+    document.getElementById('checkFwd').value = pair.forward.sequence;
+    document.getElementById('checkRev').value = pair.reverse.sequence;
+    // Copy template
+    const dt = designTemplate.value.trim();
+    if (dt) checkTemplate.value = dt;
+    // Switch to Check tab
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.container > .tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelector('[data-tab="check"]').classList.add('active');
+    document.getElementById('tab-check').classList.add('active');
+  };
+
+  window.downloadDesignCsv = function() {
+    const d = window._designData;
+    if (!d) return;
+    let csv = 'Rank,Penalty,Fwd_Sequence,Rev_Sequence,Product_Size,Fwd_Tm,Rev_Tm,Fwd_GC,Rev_GC\n';
+    d.pairs.forEach(p => {
+      csv += `${p.rank},${p.penalty},${p.forward.sequence},${p.reverse.sequence},${p.product_size},${p.forward.tm},${p.reverse.tm},${p.forward.gc_percent},${p.reverse.gc_percent}\n`;
+    });
+    downloadBlob(csv, 'primer_pairs.csv', 'text/csv');
+  };
+
+  window.downloadDesignFasta = function() {
+    const d = window._designData;
+    if (!d) return;
+    let fasta = '';
+    d.pairs.forEach(p => {
+      fasta += `>pair${p.rank}_forward_${p.forward.tm}C_${p.forward.gc_percent}GC\n${p.forward.sequence}\n`;
+      fasta += `>pair${p.rank}_reverse_${p.reverse.tm}C_${p.reverse.gc_percent}GC\n${p.reverse.sequence}\n`;
+    });
+    downloadBlob(fasta, 'primer_pairs.fasta', 'text/plain');
+  };
+
+  // ═══════ BLAST ═══════
+  document.getElementById('btnBlast').addEventListener('click', async () => {
+    const st = document.getElementById('statusBlast');
+    const res = document.getElementById('resultBlast');
+    res.classList.remove('visible');
+    showStatus(st, 'loading', 'Querying NCBI BLAST\u2026 (this may take 30\u201360 seconds)');
+
+    try {
+      const data = await apiPost('/api/primercheck/blast', getBasePayload());
+      window._blastData = data;
+
+      if (data.num_hits === 0) {
+        showStatus(st, 'warning', `No hits found (RID: ${data.rid})`);
+      } else {
+        showStatus(st, 'success', `${data.num_hits} hit(s) found (RID: ${data.rid})`);
+      }
+
+      let html = '<div class="card"><div class="card-title">BLAST Results</div>';
+      if (data.hits.length) {
+        html += '<div class="blast-wrap"><table class="blast-table"><thead><tr>';
+        html += '<th>Description</th><th>Organism</th><th>%ID</th><th>Len</th><th>MM</th><th>E-value</th><th>Score</th><th>Link</th>';
+        html += '</tr></thead><tbody>';
+        data.hits.forEach(h => {
+          const desc = h.description.length > 60 ? h.description.substring(0, 60) + '\u2026' : h.description;
+          html += `<tr>`;
+          html += `<td style="font-family:Inter,sans-serif;max-width:200px;overflow:hidden;text-overflow:ellipsis" title="${h.description}">${desc}</td>`;
+          html += `<td style="font-family:Inter,sans-serif">${h.organism}</td>`;
+          html += `<td>${h.pct_identity}</td><td>${h.alignment_length}</td><td>${h.mismatches}</td>`;
+          html += `<td>${h.evalue.toExponential(1)}</td><td>${h.bit_score}</td>`;
+          html += `<td><a href="${h.ncbi_url}" target="_blank">${h.accession}</a></td>`;
+          html += `</tr>`;
+        });
+        html += '</tbody></table></div>';
+      }
+
+      html += '<div class="download-row"><button class="btn-secondary" onclick="downloadBlastCsv()">Download CSV</button></div>';
+      html += '</div>';
+
+      res.innerHTML = html;
+      res.classList.add('visible');
+    } catch (e) {
+      showStatus(st, 'error', e.message);
+    }
+  });
+
+  window.downloadBlastCsv = function() {
+    const d = window._blastData;
+    if (!d) return;
+    let csv = 'Description,Accession,Organism,Pct_Identity,Alignment_Length,Mismatches,Gaps,E_Value,Bit_Score\n';
+    d.hits.forEach(h => {
+      const desc = '"' + h.description.replace(/"/g, '""') + '"';
+      csv += `${desc},${h.accession},"${h.organism}",${h.pct_identity},${h.alignment_length},${h.mismatches},${h.gaps},${h.evalue},${h.bit_score}\n`;
+    });
+    downloadBlob(csv, 'blast_results.csv', 'text/csv');
+  };
+
+  // ── Collapsibles ──
+  document.querySelectorAll('.collapsible-trigger').forEach(t => {
+    t.addEventListener('click', () => {
+      t.classList.toggle('open');
+      t.nextElementSibling.classList.toggle('open');
+    });
+  });
+
+  // ── Theme toggle ──
+  document.getElementById('themeToggle').addEventListener('click', () => {
+    const html = document.documentElement;
+    const next = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    html.setAttribute('data-theme', next);
+    localStorage.setItem('biotools-theme', next);
+    if (mismatchData) renderHeatmap(mismatchData);
+  });
+  (() => {
+    const saved = localStorage.getItem('biotools-theme');
+    if (saved === 'light') document.documentElement.setAttribute('data-theme', 'light');
+  })();
+</script>
+
+</body>
+</html>

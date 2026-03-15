@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BioTools – Diversity</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.plot.ly/plotly-2.35.0.min.js"></script>
+  <style>
+    :root {
+      --bg: #09090b;
+      --surface: rgba(255,255,255,0.03);
+      --surface-hover: rgba(255,255,255,0.06);
+      --surface-solid: #131316;
+      --border: rgba(255,255,255,0.08);
+      --border-hover: rgba(255,255,255,0.15);
+      --text: #fafafa;
+      --text-secondary: #a1a1aa;
+      --text-muted: #71717a;
+      --accent: #6366f1;
+      --accent-light: #818cf8;
+      --accent-glow: rgba(99,102,241,0.15);
+      --accent-glow-strong: rgba(99,102,241,0.25);
+      --success: #22c55e;
+      --success-glow: rgba(34,197,94,0.15);
+      --error: #ef4444;
+      --error-glow: rgba(239,68,68,0.15);
+      --warning: #f59e0b;
+      --warning-glow: rgba(245,158,11,0.15);
+      --radius: 12px;
+      --radius-lg: 16px;
+      --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    [data-theme="light"] {
+      --bg: #f5f5f5; --surface: rgba(0,0,0,0.03); --surface-hover: rgba(0,0,0,0.06);
+      --surface-solid: #ffffff; --border: rgba(0,0,0,0.12); --border-hover: rgba(0,0,0,0.20);
+      --text: #18181b; --text-secondary: #52525b; --text-muted: #71717a;
+      --accent-light: #4f46e5; --accent-glow: rgba(99,102,241,0.10);
+      --accent-glow-strong: rgba(99,102,241,0.18);
+      --success: #16a34a; --success-glow: rgba(22,163,74,0.10);
+      --error: #dc2626; --error-glow: rgba(220,38,38,0.08);
+      --warning: #d97706; --warning-glow: rgba(217,119,6,0.10);
+    }
+    [data-theme="light"] body::before { background-image: linear-gradient(rgba(0,0,0,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,0.03) 1px,transparent 1px); }
+    [data-theme="light"] body::after { background: radial-gradient(circle,rgba(99,102,241,0.06) 0%,transparent 70%); }
+    [data-theme="light"] .topnav { background: rgba(245,245,245,0.85); }
+    [data-theme="light"] .status.error { background: var(--error-glow); border-color: rgba(220,38,38,0.25); color: #991b1b; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+      background: var(--bg); color: var(--text); min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center;
+      padding: 3rem 1.25rem; padding-top: 4.5rem; -webkit-font-smoothing: antialiased;
+    }
+    body::before { content:''; position:fixed; inset:0; background-image:linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px); background-size:64px 64px; pointer-events:none; z-index:0; }
+    body::after { content:''; position:fixed; top:-200px; left:50%; transform:translateX(-50%); width:600px; height:600px; background:radial-gradient(circle,rgba(99,102,241,0.08) 0%,transparent 70%); pointer-events:none; z-index:0; }
+    .topnav { position:fixed; top:0; left:0; right:0; z-index:100; display:flex; align-items:center; gap:0.25rem; padding:0.5rem 1.25rem; background:rgba(9,9,11,0.85); backdrop-filter:blur(12px); border-bottom:1px solid var(--border); }
+    .topnav-brand { font-size:0.8125rem; font-weight:700; color:var(--text); margin-right:1rem; text-decoration:none; letter-spacing:-0.02em; }
+    .topnav-brand span { background:linear-gradient(135deg,var(--accent-light),#c084fc); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+    .topnav a.nav-link { font-size:0.75rem; font-weight:500; color:var(--text-muted); text-decoration:none; padding:0.375rem 0.75rem; border-radius:8px; transition:all var(--transition); }
+    .topnav a.nav-link:hover { color:var(--text); background:var(--surface-hover); }
+    .topnav a.nav-link.active { color:var(--accent-light); background:var(--accent-glow); }
+    .container { position:relative; z-index:1; width:100%; max-width:960px; display:flex; flex-direction:column; align-items:center; }
+    header { text-align:center; margin-bottom:2.5rem; }
+    .logo { display:inline-flex; align-items:center; gap:0.6rem; margin-bottom:0.75rem; }
+    .logo-icon { width:40px; height:40px; background:linear-gradient(135deg,var(--accent),#a78bfa); border-radius:10px; display:flex; align-items:center; justify-content:center; }
+    .logo-icon svg { width:22px; height:22px; stroke:white; fill:none; }
+    header h1 { font-size:1.75rem; font-weight:700; letter-spacing:-0.03em; }
+    header h1 span { background:linear-gradient(135deg,var(--accent-light),#c084fc); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+    header p { color:var(--text-muted); margin-top:0.5rem; font-size:0.875rem; }
+    .card { background:var(--surface); backdrop-filter:blur(12px); border:1px solid var(--border); border-radius:var(--radius-lg); padding:1.5rem; width:100%; margin-bottom:1rem; transition:border-color var(--transition); }
+    .card:hover { border-color:var(--border-hover); }
+    .card-title { font-size:0.6875rem; font-weight:600; text-transform:uppercase; letter-spacing:0.1em; color:var(--text-muted); margin-bottom:1rem; }
+    .tab-bar { display:flex; gap:0.25rem; width:100%; margin-bottom:1rem; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:0.25rem; }
+    .tab-btn { flex:1; padding:0.6rem 1rem; border:none; border-radius:8px; background:transparent; color:var(--text-muted); font-size:0.8rem; font-weight:600; font-family:'Inter',sans-serif; cursor:pointer; transition:all var(--transition); }
+    .tab-btn:hover { color:var(--text); background:var(--surface-hover); }
+    .tab-btn.active { color:var(--accent-light); background:var(--accent-glow); }
+    .tab-panel { display:none; width:100%; }
+    .tab-panel.active { display:block; }
+    .row { display:flex; gap:0.75rem; }
+    .row > * { flex:1; }
+    label.field { display:flex; flex-direction:column; gap:0.4rem; font-size:0.75rem; color:var(--text-muted); font-weight:500; }
+    select,input[type="text"],input[type="number"] { appearance:none; background:var(--surface-solid); border:1px solid var(--border); border-radius:var(--radius); color:var(--text); padding:0.625rem 0.875rem; font-size:0.8125rem; font-family:'Inter',sans-serif; transition:all var(--transition); }
+    select { cursor:pointer; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2371717a'%3E%3Cpath d='M6 8.5L1 3.5h10z'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 0.75rem center; padding-right:2.25rem; }
+    select:hover,input:hover { border-color:var(--border-hover); }
+    select:focus,input:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-glow); }
+    select option { background:var(--surface-solid); color:var(--text); }
+    .btn { width:100%; padding:0.8rem; border:none; border-radius:var(--radius); background:linear-gradient(135deg,var(--accent),#7c3aed); color:#fff; font-size:0.875rem; font-weight:600; font-family:'Inter',sans-serif; cursor:pointer; transition:all var(--transition); position:relative; overflow:hidden; margin-top:0.25rem; }
+    .btn::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(255,255,255,0.1),transparent); opacity:0; transition:opacity var(--transition); }
+    .btn:hover:not(:disabled)::before { opacity:1; }
+    .btn:hover:not(:disabled) { box-shadow:0 0 24px var(--accent-glow-strong); transform:translateY(-1px); }
+    .btn:disabled { opacity:0.35; cursor:not-allowed; background:rgba(255,255,255,0.08); color:var(--text-muted); }
+    .btn-secondary { padding:0.6rem 1rem; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface); color:var(--text-secondary); font-size:0.8125rem; font-weight:500; font-family:'Inter',sans-serif; cursor:pointer; transition:all var(--transition); }
+    .btn-secondary:hover { background:var(--surface-hover); border-color:var(--border-hover); color:var(--text); }
+    .status { width:100%; padding:0.75rem 1rem; border-radius:var(--radius); font-size:0.8125rem; margin-top:0.75rem; display:none; align-items:center; gap:0.5rem; }
+    .status.error { display:flex; background:var(--error-glow); border:1px solid rgba(239,68,68,0.25); color:#fca5a5; }
+    .status.success { display:flex; background:var(--success-glow); border:1px solid rgba(34,197,94,0.25); color:#86efac; }
+    .status.loading { display:flex; background:var(--accent-glow); border:1px solid rgba(99,102,241,0.25); color:var(--accent-light); }
+    .status.warning { display:flex; background:var(--warning-glow); border:1px solid rgba(245,158,11,0.25); color:#fbbf24; }
+    .status-icon { flex-shrink:0; width:16px; height:16px; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .status.loading .status-icon { animation:spin 1s linear infinite; }
+    .result-section { display:none; width:100%; margin-top:1rem; }
+    .result-section.visible { display:block; }
+    .meta-row { display:flex; flex-wrap:wrap; gap:0.5rem; margin-bottom:1rem; }
+    .meta-badge { display:inline-flex; align-items:center; gap:0.35rem; padding:0.35rem 0.75rem; border-radius:8px; font-size:0.7rem; font-weight:500; background:var(--surface); border:1px solid var(--border); color:var(--text-secondary); }
+    .meta-badge strong { color:var(--text); }
+    .plot-container { width:100%; min-height:400px; border-radius:var(--radius); overflow:hidden; }
+    .download-row { display:flex; gap:0.5rem; margin-top:0.75rem; }
+    .toggle-row { display:flex; gap:1.5rem; align-items:center; margin-top:0.75rem; }
+    .toggle-label { display:flex; align-items:center; gap:0.5rem; font-size:0.75rem; color:var(--text-muted); cursor:pointer; }
+    .toggle-switch { position:relative; width:36px; height:20px; background:var(--surface-solid); border:1px solid var(--border); border-radius:10px; transition:all var(--transition); cursor:pointer; }
+    .toggle-switch::after { content:''; position:absolute; top:2px; left:2px; width:14px; height:14px; border-radius:50%; background:var(--text-muted); transition:all var(--transition); }
+    .toggle-switch.on { background:var(--accent); border-color:var(--accent); }
+    .toggle-switch.on::after { left:18px; background:white; }
+    .dropzone { border:1.5px dashed rgba(255,255,255,0.12); border-radius:var(--radius); padding:1.5rem 1rem; text-align:center; cursor:pointer; transition:all var(--transition); position:relative; overflow:hidden; }
+    .dropzone::before { content:''; position:absolute; inset:0; background:radial-gradient(circle at center,var(--accent-glow) 0%,transparent 70%); opacity:0; transition:opacity var(--transition); }
+    .dropzone:hover::before,.dropzone.dragover::before { opacity:1; }
+    .dropzone:hover,.dropzone.dragover { border-color:var(--accent); }
+    .dropzone.has-file { border-color:var(--success); border-style:solid; }
+    .dropzone.has-file::before { background:radial-gradient(circle at center,var(--success-glow) 0%,transparent 70%); opacity:1; }
+    .dropzone-content { position:relative; z-index:1; }
+    .dropzone-icon { width:36px; height:36px; margin:0 auto 0.5rem; border-radius:10px; background:rgba(255,255,255,0.05); display:flex; align-items:center; justify-content:center; }
+    .dropzone-icon svg { width:18px; height:18px; stroke:var(--text-muted); }
+    .dropzone p { color:var(--text-secondary); font-size:0.7rem; }
+    .dropzone .filename { color:var(--text); font-weight:600; font-size:0.75rem; word-break:break-all; }
+    .dropzone .filesize { color:var(--text-muted); font-size:0.65rem; }
+    .dropzone .optional-tag { color:var(--text-muted); font-size:0.6rem; margin-top:0.2rem; }
+    .dropzone input { display:none; }
+    .upload-row { display:flex; gap:0.75rem; }
+    .upload-row > * { flex:1; }
+    .collapsible { width:100%; margin-top:0.75rem; }
+    .collapsible-trigger { background:none; border:1px solid var(--border); border-radius:var(--radius); color:var(--text-secondary); cursor:pointer; font-size:0.75rem; font-family:'Inter',sans-serif; font-weight:500; padding:0.625rem 1rem; width:100%; text-align:left; display:flex; align-items:center; justify-content:space-between; transition:all var(--transition); }
+    .collapsible-trigger:hover { background:var(--surface); border-color:var(--border-hover); color:var(--text); }
+    .collapsible-trigger.open { border-radius:var(--radius) var(--radius) 0 0; background:var(--surface); border-bottom-color:transparent; }
+    .collapsible-chevron { width:14px; height:14px; stroke:currentColor; transition:transform var(--transition); }
+    .collapsible-trigger.open .collapsible-chevron { transform:rotate(180deg); }
+    .collapsible-body { display:none; background:var(--surface); border:1px solid var(--border); border-top:none; border-radius:0 0 var(--radius) var(--radius); overflow:auto; padding:1rem; max-height:400px; }
+    .collapsible-body.open { display:block; }
+    .stats-table { width:100%; border-collapse:collapse; font-size:0.7rem; }
+    .stats-table th,.stats-table td { padding:0.4rem 0.6rem; text-align:left; border-bottom:1px solid var(--border); }
+    .stats-table th { color:var(--text-muted); font-weight:600; font-size:0.6rem; text-transform:uppercase; }
+    .stats-table td { color:var(--text-secondary); font-family:'JetBrains Mono',monospace; font-size:0.65rem; }
+    .stats-table td:first-child { font-family:'Inter',sans-serif; color:var(--text); }
+    .sub-tab-bar { display:flex; gap:0.25rem; margin-bottom:0.75rem; border-bottom:1px solid var(--border); padding-bottom:0.5rem; }
+    .sub-tab-btn { padding:0.4rem 0.75rem; border:none; border-radius:6px; background:transparent; color:var(--text-muted); font-size:0.7rem; font-weight:500; font-family:'Inter',sans-serif; cursor:pointer; transition:all var(--transition); }
+    .sub-tab-btn:hover { color:var(--text); }
+    .sub-tab-btn.active { color:var(--accent-light); background:var(--accent-glow); }
+    .theme-toggle { position:fixed; top:1rem; right:1rem; z-index:100; background:var(--surface-solid); border:1px solid var(--border); border-radius:50%; width:36px; height:36px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all var(--transition); color:var(--text-muted); }
+    .theme-toggle:hover { border-color:var(--accent); color:var(--accent-light); background:var(--accent-glow); }
+    .theme-toggle svg { width:18px; height:18px; }
+    .theme-toggle .icon-sun { display:none; }
+    [data-theme="light"] .theme-toggle .icon-moon { display:none; }
+    [data-theme="light"] .theme-toggle .icon-sun { display:block; }
+    footer { margin-top:2.5rem; color:var(--text-muted); font-size:0.6875rem; text-align:center; display:flex; align-items:center; gap:0.5rem; }
+    footer span { opacity:0.3; }
+    @media (max-width:700px) { body { padding:1.5rem 1rem; padding-top:4rem; } .row,.upload-row,.download-row { flex-direction:column; } }
+  </style>
+</head>
+<body>
+
+<nav class="topnav">
+  <a class="topnav-brand" href="/"><span>Bio</span>Tools</a>
+  <a class="nav-link" href="/seqconvert">SeqConvert</a>
+  <a class="nav-link" href="/venn">Venn Diagram</a>
+  <a class="nav-link" href="/phylotree">PhyloTree</a>
+  <a class="nav-link" href="/pcoa">PCoA</a>
+  <a class="nav-link" href="/primercheck">PrimerCheck</a>
+  <a class="nav-link active" href="/diversity">Diversity</a>
+</nav>
+<button class="theme-toggle" id="themeToggle" title="Toggle light/dark mode">
+  <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0112.478 3.34a9.75 9.75 0 109.274 11.662z"/></svg>
+  <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1.5M12 19.5V21M4.219 4.219l1.061 1.061M17.72 17.72l1.06 1.06M3 12h1.5M19.5 12H21M4.219 19.781l1.061-1.061M17.72 6.28l1.06-1.06"/><circle cx="12" cy="12" r="4.5"/></svg>
+</button>
+
+<div class="container">
+  <header>
+    <div class="logo">
+      <div class="logo-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM17.5 14v7M14 17.5h7"/>
+        </svg>
+      </div>
+      <h1><span>Diversity</span></h1>
+    </div>
+    <p>Alpha &amp; Beta diversity analysis for community data</p>
+  </header>
+
+  <!-- Main tab bar: Alpha / Beta -->
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="alpha">Alpha Diversity</button>
+    <button class="tab-btn" data-tab="beta">Beta Diversity</button>
+  </div>
+
+  <!-- ═══════════════════ ALPHA TAB ═══════════════════ -->
+  <div class="tab-panel active" id="tab-alpha">
+    <div class="card">
+      <div class="card-title">Data input</div>
+      <div class="upload-row">
+        <div class="dropzone" id="dzAlphaAbundance">
+          <div class="dropzone-content"><div class="dropzone-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg></div><p>Abundance table (CSV/TSV)</p></div>
+          <input type="file" id="alphaAbundanceInput" accept=".csv,.tsv,.txt,.tab">
+        </div>
+        <div class="dropzone" id="dzAlphaMetadata">
+          <div class="dropzone-content"><div class="dropzone-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg></div><p>Metadata (CSV/TSV)</p><p class="optional-tag">Optional</p></div>
+          <input type="file" id="alphaMetadataInput" accept=".csv,.tsv,.txt,.tab">
+        </div>
+        <div class="dropzone" id="dzAlphaTree">
+          <div class="dropzone-content"><div class="dropzone-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg></div><p>Phylogenetic tree</p><p class="optional-tag">For Faith's PD only</p></div>
+          <input type="file" id="alphaTreeInput" accept=".nwk,.newick,.tree,.txt">
+        </div>
+      </div>
+      <div id="alphaDepthInfo" style="display:none; margin-top:0.75rem">
+        <div class="meta-row" id="alphaDepthMeta"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Settings</div>
+      <div class="row" style="margin-bottom:0.75rem">
+        <label class="field">Rarefaction depth (optional)<input type="number" id="alphaRareDepth" placeholder="Leave empty for no rarefaction" min="1"></label>
+        <label class="field">Grouping variable<select id="alphaGroupCol" disabled><option value="">No metadata</option></select></label>
+      </div>
+      <div class="toggle-row">
+        <label class="toggle-label"><div class="toggle-switch" id="alphaPairedToggle"></div>Paired samples (Wilcoxon)</label>
+        <label class="toggle-label"><div class="toggle-switch on" id="alphaBoxToggle"></div>Box plots (off = bar)</label>
+      </div>
+    </div>
+
+    <button class="btn" id="btnAlpha" disabled>Run Alpha Diversity</button>
+    <div class="status" id="statusAlpha"></div>
+
+    <div class="result-section" id="resultAlpha">
+      <div class="card"><div class="card-title">Rarefaction Curves</div><div class="plot-container" id="alphaRarefactionPlot"></div></div>
+      <div class="card"><div class="card-title">Diversity Metrics</div><div id="alphaMetricPlots"></div></div>
+      <div class="download-row">
+        <button class="btn-secondary" onclick="downloadAlphaMetricsCsv()">Metrics CSV</button>
+        <button class="btn-secondary" onclick="downloadAlphaStatsCsv()">Statistics CSV</button>
+        <button class="btn-secondary" onclick="downloadAlphaRarefactionCsv()">Rarefaction CSV</button>
+      </div>
+      <div class="collapsible">
+        <button class="collapsible-trigger" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Statistics Summary<svg class="collapsible-chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg></button>
+        <div class="collapsible-body" id="alphaStatsBody"></div>
+      </div>
+      <div class="collapsible">
+        <button class="collapsible-trigger" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">Sample-level Results<svg class="collapsible-chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg></button>
+        <div class="collapsible-body" id="alphaSampleBody"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ BETA TAB ═══════════════════ -->
+  <div class="tab-panel" id="tab-beta">
+    <div class="card">
+      <div class="card-title">Data input</div>
+      <div class="upload-row">
+        <div class="dropzone" id="dzBetaAbundance">
+          <div class="dropzone-content"><div class="dropzone-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg></div><p>Abundance table (CSV/TSV)</p></div>
+          <input type="file" id="betaAbundanceInput" accept=".csv,.tsv,.txt,.tab">
+        </div>
+        <div class="dropzone" id="dzBetaMetadata">
+          <div class="dropzone-content"><div class="dropzone-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg></div><p>Metadata (CSV/TSV)</p><p class="optional-tag">Optional</p></div>
+          <input type="file" id="betaMetadataInput" accept=".csv,.tsv,.txt,.tab">
+        </div>
+        <div class="dropzone" id="dzBetaTree">
+          <div class="dropzone-content"><div class="dropzone-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg></div><p>Phylogenetic tree</p><p class="optional-tag">Required for UniFrac</p></div>
+          <input type="file" id="betaTreeInput" accept=".nwk,.newick,.tree,.txt">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Settings</div>
+      <div class="row" style="margin-bottom:0.75rem">
+        <label class="field">Distance metric
+          <select id="betaMetric">
+            <optgroup label="Compositional">
+              <option value="braycurtis" selected>Bray-Curtis</option>
+              <option value="jaccard">Jaccard (presence/absence)</option>
+              <option value="canberra">Canberra</option>
+            </optgroup>
+            <optgroup label="Phylogenetic (requires tree)">
+              <option value="unweighted_unifrac">Unweighted UniFrac</option>
+              <option value="weighted_unifrac">Weighted UniFrac</option>
+            </optgroup>
+            <optgroup label="General">
+              <option value="euclidean">Euclidean</option>
+              <option value="correlation">Correlation (1 - Pearson)</option>
+              <option value="aitchison">Aitchison (CLR + Euclidean)</option>
+            </optgroup>
+          </select>
+        </label>
+        <label class="field">Ordination method
+          <select id="betaOrdination">
+            <option value="pcoa" selected>PCoA</option>
+            <option value="nmds">NMDS</option>
+            <option value="tsne">t-SNE (exploratory)</option>
+            <option value="pca_clr">PCA on CLR (Aitchison)</option>
+          </select>
+        </label>
+      </div>
+      <div class="row" style="margin-bottom:0.75rem">
+        <label class="field">Rarefaction depth (optional)<input type="number" id="betaRareDepth" placeholder="Leave empty" min="1"></label>
+        <label class="field">Grouping variable<select id="betaGroupCol" disabled><option value="">No metadata</option></select></label>
+        <label class="field">Permutations
+          <select id="betaPermutations"><option value="99">99</option><option value="499">499</option><option value="999" selected>999</option></select>
+        </label>
+      </div>
+    </div>
+
+    <button class="btn" id="btnBeta" disabled>Run Beta Diversity</button>
+    <div class="status" id="statusBeta"></div>
+
+    <div class="result-section" id="resultBeta">
+      <div class="sub-tab-bar" id="betaSubTabs">
+        <button class="sub-tab-btn active" data-bsub="ordination">Ordination Plot</button>
+        <button class="sub-tab-btn" data-bsub="heatmap">Distance Matrix</button>
+        <button class="sub-tab-btn" data-bsub="stats">Statistics</button>
+      </div>
+
+      <div class="tab-panel active" id="bsub-ordination">
+        <div class="card">
+          <div class="row" style="margin-bottom:0.75rem">
+            <label class="field">Colour by<select id="betaColourBy"><option value="">None</option></select></label>
+            <label class="field">Shape by<select id="betaShapeBy"><option value="">None</option></select></label>
+          </div>
+          <div class="toggle-row" style="margin-bottom:0.75rem">
+            <label class="toggle-label"><div class="toggle-switch" id="beta3dToggle"></div>3D</label>
+            <label class="toggle-label"><div class="toggle-switch on" id="betaLabelsToggle"></div>Labels</label>
+            <label class="toggle-label"><div class="toggle-switch" id="betaEllipsesToggle"></div>Ellipses</label>
+          </div>
+          <div class="meta-row" id="betaMetaRow"></div>
+          <div class="plot-container" id="betaOrdinationPlot"></div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="bsub-heatmap">
+        <div class="card">
+          <div class="plot-container" id="betaHeatmapPlot"></div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="bsub-stats">
+        <div class="card" id="betaStatsCard">
+          <div class="card-title">Statistical Tests</div>
+          <div id="betaStatsContent"></div>
+        </div>
+      </div>
+
+      <div class="download-row">
+        <button class="btn-secondary" onclick="downloadBetaDistCsv()">Distance Matrix CSV</button>
+        <button class="btn-secondary" onclick="downloadBetaCoordsCsv()">Coordinates CSV</button>
+        <button class="btn-secondary" onclick="downloadBetaStatsCsv()">Statistics CSV</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    BioTools &ndash; Diversity
+    <span>&middot;</span>
+    scikit-bio, scipy &amp; Plotly.js
+  </footer>
+</div>
+
+<script>
+// ── Helpers ──
+const COLORS = ['#6366f1','#22c55e','#f59e0b','#ef4444','#06b6d4','#ec4899','#8b5cf6','#14b8a6','#f97316','#64748b'];
+const SYMBOLS_2D = ['circle','square','diamond','cross','triangle-up','star','hexagon','pentagon'];
+const statusIcons = {
+  loading:'<svg class="status-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>',
+  success:'<svg class="status-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>',
+  error:'<svg class="status-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg>',
+  warning:'<svg class="status-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z"/></svg>',
+};
+function showStatus(el,type,msg){el.className=`status ${type}`;el.innerHTML=`${statusIcons[type]||''}<span>${msg}</span>`;}
+function clearStatus(el){el.className='status';el.innerHTML='';}
+function downloadBlob(c,fn,m){const b=new Blob([c],{type:m});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=fn;a.click();URL.revokeObjectURL(a.href);}
+function isLight(){return document.documentElement.getAttribute('data-theme')==='light';}
+
+function setupDropzone(dz,input,onFile){
+  dz.addEventListener('click',()=>input.click());
+  dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('dragover');});
+  dz.addEventListener('dragleave',()=>dz.classList.remove('dragover'));
+  dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('dragover');if(e.dataTransfer.files.length)onFile(e.dataTransfer.files[0],dz);});
+  input.addEventListener('change',()=>{if(input.files.length)onFile(input.files[0],dz);});
+}
+function showFileInDz(f,dz){
+  dz.classList.add('has-file');
+  const sz=f.size<1024*1024?(f.size/1024).toFixed(1)+' KB':(f.size/(1024*1024)).toFixed(2)+' MB';
+  dz.querySelector('.dropzone-content').querySelector('p').innerHTML=`<span class="filename">${f.name}</span><span class="filesize">${sz}</span>`;
+}
+
+// ── Tab switching ──
+document.querySelectorAll('.tab-bar .tab-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.tab-bar .tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.container > .tab-panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+  });
+});
+
+// Beta sub-tabs
+document.querySelectorAll('#betaSubTabs .sub-tab-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('#betaSubTabs .sub-tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('#resultBeta > .tab-panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('bsub-'+btn.dataset.bsub).classList.add('active');
+  });
+});
+
+// ═══════ ALPHA DIVERSITY ═══════
+let alphaAbundanceFile=null, alphaMetadataFile=null, alphaTreeFile=null, alphaData=null;
+let alphaPaired=false, alphaBoxPlot=true;
+
+setupDropzone(document.getElementById('dzAlphaAbundance'),document.getElementById('alphaAbundanceInput'),(f,dz)=>{
+  alphaAbundanceFile=f;showFileInDz(f,dz);document.getElementById('btnAlpha').disabled=false;
+});
+setupDropzone(document.getElementById('dzAlphaMetadata'),document.getElementById('alphaMetadataInput'),(f,dz)=>{
+  alphaMetadataFile=f;showFileInDz(f,dz);
+});
+setupDropzone(document.getElementById('dzAlphaTree'),document.getElementById('alphaTreeInput'),(f,dz)=>{
+  alphaTreeFile=f;showFileInDz(f,dz);
+});
+
+document.getElementById('alphaPairedToggle').addEventListener('click',function(){alphaPaired=!alphaPaired;this.classList.toggle('on',alphaPaired);});
+document.getElementById('alphaBoxToggle').addEventListener('click',function(){alphaBoxPlot=!alphaBoxPlot;this.classList.toggle('on',alphaBoxPlot);if(alphaData)renderAlphaPlots();});
+
+document.getElementById('btnAlpha').addEventListener('click',async()=>{
+  const st=document.getElementById('statusAlpha');
+  const res=document.getElementById('resultAlpha');
+  res.classList.remove('visible');
+  showStatus(st,'loading','Calculating alpha diversity\u2026');
+
+  const form=new FormData();
+  form.append('abundance_file',alphaAbundanceFile);
+  if(alphaMetadataFile)form.append('metadata_file',alphaMetadataFile);
+  if(alphaTreeFile)form.append('tree_file',alphaTreeFile);
+  const rd=document.getElementById('alphaRareDepth').value;
+  if(rd)form.append('rarefaction_depth',rd);
+  const gc=document.getElementById('alphaGroupCol').value;
+  if(gc)form.append('grouping_column',gc);
+  if(alphaPaired)form.append('paired','true');
+
+  try{
+    const resp=await fetch('/api/diversity/alpha',{method:'POST',body:form});
+    const data=await resp.json();
+    if(!resp.ok)throw new Error(data.error||`HTTP ${resp.status}`);
+    alphaData=data;
+
+    if(data.warnings&&data.warnings.length)showStatus(st,'warning',data.warnings.join(' | '));
+    else showStatus(st,'success',`Done \u2014 ${data.num_samples} samples, ${data.num_features} features`);
+
+    // Populate grouping dropdown
+    const sel=document.getElementById('alphaGroupCol');
+    sel.innerHTML='<option value="">All samples</option>';
+    if(data.metadata_columns){
+      data.metadata_columns.forEach(c=>{sel.innerHTML+=`<option value="${c}">${c}</option>`;});
+      sel.disabled=false;
+    }
+    sel.addEventListener('change',()=>{if(alphaData)renderAlphaPlots();});
+
+    // Show depth info
+    if(data.sample_depths){
+      const di=document.getElementById('alphaDepthInfo');
+      di.style.display='';
+      document.getElementById('alphaDepthMeta').innerHTML=[
+        {l:'Samples',v:data.num_samples},{l:'Features',v:data.num_features},
+        {l:'Min depth',v:data.sample_depths.min},{l:'Median depth',v:data.sample_depths.median},
+        {l:'Max depth',v:data.sample_depths.max},
+      ].map(b=>`<div class="meta-badge">${b.l}: <strong>${b.v}</strong></div>`).join('');
+      if(!rd)document.getElementById('alphaRareDepth').placeholder=`Suggested: ${data.sample_depths.min}`;
+    }
+
+    renderAlphaRarefaction(data);
+    renderAlphaPlots();
+    renderAlphaStats(data);
+    renderAlphaSampleTable(data);
+    res.classList.add('visible');
+  }catch(e){showStatus(st,'error',e.message);}
+});
+
+function renderAlphaRarefaction(data){
+  if(!data.rarefaction_curves)return;
+  const rc=data.rarefaction_curves;
+  const light=isLight();
+  const fg=light?'#18181b':'#fafafa';
+  const bg=light?'#ffffff':'#131316';
+  const grid=light?'rgba(0,0,0,0.08)':'rgba(255,255,255,0.08)';
+  const gc=document.getElementById('alphaGroupCol').value;
+  const groups=data.metadata&&gc?data.metadata[gc]:null;
+
+  const traces=[];
+  const samples=Object.keys(rc.curves);
+  samples.forEach((s,i)=>{
+    const grp=groups?groups[data.samples.indexOf(s)]:'All';
+    const ci=groups?[...new Set(Object.values(data.metadata[gc]))].indexOf(grp)%COLORS.length:i%COLORS.length;
+    traces.push({x:rc.depths,y:rc.curves[s],name:s,mode:'lines',line:{color:COLORS[ci],width:1.5},
+      hovertemplate:`${s}<br>Depth: %{x}<br>Features: %{y}<extra></extra>`});
+  });
+
+  const layout={paper_bgcolor:bg,plot_bgcolor:bg,font:{color:fg,family:'Inter,sans-serif',size:11},
+    margin:{l:50,r:20,t:10,b:50},
+    xaxis:{title:'Sequencing depth',gridcolor:grid,color:fg},
+    yaxis:{title:'Observed features',gridcolor:grid,color:fg},
+    showlegend:samples.length<=20,legend:{font:{size:9}},
+  };
+
+  // Add rarefaction depth line
+  const rd=document.getElementById('alphaRareDepth').value;
+  if(rd){
+    layout.shapes=[{type:'line',x0:parseInt(rd),x1:parseInt(rd),y0:0,y1:1,yref:'paper',
+      line:{color:COLORS[0],width:2,dash:'dash'}}];
+  }
+
+  Plotly.newPlot(document.getElementById('alphaRarefactionPlot'),traces,layout,{responsive:true});
+}
+
+function renderAlphaPlots(){
+  const d=alphaData;
+  if(!d)return;
+  const container=document.getElementById('alphaMetricPlots');
+  container.innerHTML='';
+  const gc=document.getElementById('alphaGroupCol').value;
+  const groups=d.metadata&&gc?d.metadata[gc]:null;
+  const light=isLight();
+  const fg=light?'#18181b':'#fafafa';
+  const bg=light?'#ffffff':'#131316';
+
+  const metricKeys=Object.keys(d.metrics).filter(k=>d.metrics[k]!==null);
+
+  metricKeys.forEach(mk=>{
+    const div=document.createElement('div');
+    div.style.cssText='width:100%;min-height:300px;margin-bottom:1rem;';
+    div.id='alpha-plot-'+mk;
+    container.appendChild(div);
+
+    const label=d.metric_labels[mk]||mk;
+    const values=d.metrics[mk];
+
+    if(alphaBoxPlot){
+      // Box plot
+      if(groups){
+        const uGroups=[...new Set(groups)];
+        const traces=uGroups.map((g,gi)=>{
+          const idx=d.samples.map((_,i)=>i).filter(i=>groups[i]===g);
+          return {y:idx.map(i=>values[i]),x:idx.map(()=>g),name:g,type:'box',
+            boxpoints:'all',jitter:0.3,pointpos:-1.5,marker:{color:COLORS[gi%COLORS.length],size:5},
+            line:{color:COLORS[gi%COLORS.length]},
+            text:idx.map(i=>d.samples[i]),hovertemplate:'%{text}: %{y}<extra></extra>'};
+        });
+        Plotly.newPlot(div,traces,{paper_bgcolor:bg,plot_bgcolor:bg,font:{color:fg,family:'Inter',size:11},
+          margin:{l:50,r:20,t:30,b:40},title:{text:label,font:{size:13}},
+          yaxis:{title:label,gridcolor:light?'rgba(0,0,0,0.08)':'rgba(255,255,255,0.08)',color:fg},
+          xaxis:{color:fg},showlegend:false},{responsive:true});
+      }else{
+        Plotly.newPlot(div,[{y:values,type:'box',boxpoints:'all',jitter:0.3,pointpos:-1.5,
+          marker:{color:COLORS[0],size:5},line:{color:COLORS[0]},name:'All',
+          text:d.samples,hovertemplate:'%{text}: %{y}<extra></extra>'}],
+          {paper_bgcolor:bg,plot_bgcolor:bg,font:{color:fg,family:'Inter',size:11},
+          margin:{l:50,r:20,t:30,b:40},title:{text:label,font:{size:13}},
+          yaxis:{title:label,gridcolor:light?'rgba(0,0,0,0.08)':'rgba(255,255,255,0.08)',color:fg},
+          showlegend:false},{responsive:true});
+      }
+    }else{
+      // Bar plot
+      const indices=[...Array(d.samples.length).keys()];
+      if(groups)indices.sort((a,b)=>groups[a].localeCompare(groups[b])||values[a]-values[b]);
+      else indices.sort((a,b)=>values[a]-values[b]);
+
+      const uGroups=groups?[...new Set(groups)]:['All'];
+      const colors=indices.map(i=>{
+        const g=groups?groups[i]:'All';
+        return COLORS[uGroups.indexOf(g)%COLORS.length];
+      });
+
+      Plotly.newPlot(div,[{x:indices.map(i=>d.samples[i]),y:indices.map(i=>values[i]),type:'bar',
+        marker:{color:colors},hovertemplate:'%{x}: %{y}<extra></extra>'}],
+        {paper_bgcolor:bg,plot_bgcolor:bg,font:{color:fg,family:'Inter',size:11},
+        margin:{l:50,r:20,t:30,b:80},title:{text:label,font:{size:13}},
+        yaxis:{title:label,gridcolor:light?'rgba(0,0,0,0.08)':'rgba(255,255,255,0.08)',color:fg},
+        xaxis:{tickangle:-45,tickfont:{size:8},color:fg},showlegend:false},{responsive:true});
+    }
+  });
+}
+
+function renderAlphaStats(data){
+  const body=document.getElementById('alphaStatsBody');
+  if(!data.statistics||Object.keys(data.statistics).length===0){body.innerHTML='<p style="color:var(--text-muted);font-size:0.75rem;padding:0.5rem">No statistics computed. Select a grouping variable and re-run.</p>';return;}
+  let html='<table class="stats-table"><thead><tr><th>Metric</th><th>Test</th><th>Statistic</th><th>p-value</th><th>Sig</th></tr></thead><tbody>';
+  for(const[mk,st]of Object.entries(data.statistics)){
+    const label=data.metric_labels[mk]||mk;
+    html+=`<tr><td>${label}</td><td>${st.test}</td><td>${st.statistic}</td><td>${st.p_value}</td><td>${st.significance}</td></tr>`;
+    if(st.posthoc){
+      st.posthoc.forEach(ph=>{
+        html+=`<tr><td style="padding-left:1.5rem;color:var(--text-muted)">${ph.group1} vs ${ph.group2}</td><td>post-hoc</td><td></td><td>${ph.p_adjusted}</td><td>${ph.significance}</td></tr>`;
+      });
+    }
+  }
+  html+='</tbody></table>';
+  body.innerHTML=html;
+}
+
+function renderAlphaSampleTable(data){
+  const body=document.getElementById('alphaSampleBody');
+  const metricKeys=Object.keys(data.metrics).filter(k=>data.metrics[k]!==null);
+  let html='<table class="stats-table"><thead><tr><th>Sample</th>';
+  metricKeys.forEach(k=>{html+=`<th>${data.metric_labels[k]||k}</th>`;});
+  html+='</tr></thead><tbody>';
+  data.samples.forEach((s,i)=>{
+    html+=`<tr><td>${s}</td>`;
+    metricKeys.forEach(k=>{html+=`<td>${data.metrics[k][i]}</td>`;});
+    html+='</tr>';
+  });
+  html+='</tbody></table>';
+  if(data.rarefaction_seed!=null)html+=`<p style="font-size:0.6rem;color:var(--text-muted);margin-top:0.5rem">Seed: ${data.rarefaction_seed}</p>`;
+  body.innerHTML=html;
+}
+
+window.downloadAlphaMetricsCsv=function(){
+  if(!alphaData)return;
+  const d=alphaData;
+  const keys=Object.keys(d.metrics).filter(k=>d.metrics[k]!==null);
+  let csv='Sample,'+keys.map(k=>d.metric_labels[k]||k).join(',')+'\n';
+  d.samples.forEach((s,i)=>{csv+=s+','+keys.map(k=>d.metrics[k][i]).join(',')+'\n';});
+  downloadBlob(csv,'alpha_diversity_metrics.csv','text/csv');
+};
+window.downloadAlphaStatsCsv=function(){
+  if(!alphaData||!alphaData.statistics)return;
+  let csv='Metric,Test,Statistic,P_value,Significance\n';
+  for(const[mk,st]of Object.entries(alphaData.statistics)){
+    csv+=`${alphaData.metric_labels[mk]||mk},${st.test},${st.statistic},${st.p_value},${st.significance}\n`;
+  }
+  downloadBlob(csv,'alpha_diversity_stats.csv','text/csv');
+};
+window.downloadAlphaRarefactionCsv=function(){
+  if(!alphaData||!alphaData.rarefaction_curves)return;
+  const rc=alphaData.rarefaction_curves;
+  const samples=Object.keys(rc.curves);
+  let csv='Depth,'+samples.join(',')+'\n';
+  rc.depths.forEach((d,i)=>{csv+=d+','+samples.map(s=>rc.curves[s][i]).join(',')+'\n';});
+  downloadBlob(csv,'rarefaction_curves.csv','text/csv');
+};
+
+// ═══════ BETA DIVERSITY ═══════
+let betaAbundanceFile=null, betaMetadataFile=null, betaTreeFile=null, betaData=null;
+let beta3d=false, betaLabels=true, betaEllipses=false;
+
+setupDropzone(document.getElementById('dzBetaAbundance'),document.getElementById('betaAbundanceInput'),(f,dz)=>{
+  betaAbundanceFile=f;showFileInDz(f,dz);document.getElementById('btnBeta').disabled=false;
+});
+setupDropzone(document.getElementById('dzBetaMetadata'),document.getElementById('betaMetadataInput'),(f,dz)=>{
+  betaMetadataFile=f;showFileInDz(f,dz);
+});
+setupDropzone(document.getElementById('dzBetaTree'),document.getElementById('betaTreeInput'),(f,dz)=>{
+  betaTreeFile=f;showFileInDz(f,dz);
+});
+
+document.getElementById('beta3dToggle').addEventListener('click',function(){beta3d=!beta3d;this.classList.toggle('on',beta3d);if(betaData)renderBetaOrdination();});
+document.getElementById('betaLabelsToggle').addEventListener('click',function(){betaLabels=!betaLabels;this.classList.toggle('on',betaLabels);if(betaData)renderBetaOrdination();});
+document.getElementById('betaEllipsesToggle').addEventListener('click',function(){betaEllipses=!betaEllipses;this.classList.toggle('on',betaEllipses);if(betaData)renderBetaOrdination();});
+
+document.getElementById('btnBeta').addEventListener('click',async()=>{
+  const st=document.getElementById('statusBeta');
+  const res=document.getElementById('resultBeta');
+  res.classList.remove('visible');
+  showStatus(st,'loading','Calculating beta diversity\u2026');
+
+  const form=new FormData();
+  form.append('abundance_file',betaAbundanceFile);
+  if(betaMetadataFile)form.append('metadata_file',betaMetadataFile);
+  if(betaTreeFile)form.append('tree_file',betaTreeFile);
+  form.append('distance_metric',document.getElementById('betaMetric').value);
+  form.append('ordination_method',document.getElementById('betaOrdination').value);
+  form.append('permutations',document.getElementById('betaPermutations').value);
+  const rd=document.getElementById('betaRareDepth').value;
+  if(rd)form.append('rarefaction_depth',rd);
+  const gc=document.getElementById('betaGroupCol').value;
+  if(gc)form.append('grouping_column',gc);
+
+  try{
+    const resp=await fetch('/api/diversity/beta',{method:'POST',body:form});
+    const data=await resp.json();
+    if(!resp.ok)throw new Error(data.error||`HTTP ${resp.status}`);
+    betaData=data;
+
+    if(data.warnings&&data.warnings.length)showStatus(st,'warning',data.warnings.join(' | '));
+    else showStatus(st,'success',`Done \u2014 ${data.num_samples} samples, ${data.distance_metric}`);
+
+    // Populate controls
+    const cb=document.getElementById('betaColourBy');
+    const sb=document.getElementById('betaShapeBy');
+    cb.innerHTML='<option value="">None</option>';
+    sb.innerHTML='<option value="">None</option>';
+    if(data.metadata_columns){
+      data.metadata_columns.forEach(c=>{cb.innerHTML+=`<option value="${c}">${c}</option>`;sb.innerHTML+=`<option value="${c}">${c}</option>`;});
+    }
+    // Populate grouping dropdown
+    const gsel=document.getElementById('betaGroupCol');
+    gsel.innerHTML='<option value="">None</option>';
+    if(data.metadata_columns){data.metadata_columns.forEach(c=>{gsel.innerHTML+=`<option value="${c}">${c}</option>`;});gsel.disabled=false;}
+
+    cb.addEventListener('change',()=>{if(betaData)renderBetaOrdination();});
+    sb.addEventListener('change',()=>{if(betaData)renderBetaOrdination();});
+
+    renderBetaOrdination();
+    renderBetaHeatmap();
+    renderBetaStats(data);
+    res.classList.add('visible');
+  }catch(e){showStatus(st,'error',e.message);}
+});
+
+function renderBetaOrdination(){
+  const d=betaData;
+  const o=d.ordination;
+  const light=isLight();
+  const fg=light?'#18181b':'#fafafa';
+  const bg=light?'#ffffff':'#131316';
+  const grid=light?'rgba(0,0,0,0.08)':'rgba(255,255,255,0.08)';
+
+  // Axis labels
+  let xLabel,yLabel,zLabel;
+  if(o.variance_explained){
+    xLabel=`${o.method==='pca_clr'?'PC':'Axis'}1 (${o.variance_explained[0]}%)`;
+    yLabel=`${o.method==='pca_clr'?'PC':'Axis'}2 (${o.variance_explained[1]||0}%)`;
+    zLabel=`${o.method==='pca_clr'?'PC':'Axis'}3 (${o.variance_explained[2]||0}%)`;
+  }else if(o.stress!=null){
+    xLabel=`NMDS1 (stress=${o.stress})`;yLabel='NMDS2';zLabel='NMDS3';
+  }else{
+    xLabel='Dim 1';yLabel='Dim 2';zLabel='Dim 3';
+  }
+
+  // Meta row
+  const mr=document.getElementById('betaMetaRow');
+  mr.innerHTML='';
+  const badges=[{l:'Metric',v:d.distance_metric},{l:'Method',v:o.method},{l:'Samples',v:d.num_samples}];
+  if(o.variance_explained)badges.push({l:'Var PC1',v:o.variance_explained[0]+'%'},{l:'Var PC2',v:(o.variance_explained[1]||0)+'%'});
+  if(o.stress!=null)badges.push({l:'Stress',v:o.stress});
+  badges.forEach(b=>{mr.innerHTML+=`<div class="meta-badge">${b.l}: <strong>${b.v}</strong></div>`;});
+
+  const colCol=document.getElementById('betaColourBy').value;
+  const shpCol=document.getElementById('betaShapeBy').value;
+
+  // Group samples
+  const groups={};
+  d.samples.forEach((s,i)=>{
+    const cVal=colCol&&d.metadata?d.metadata[colCol][i]||'NA':'_all_';
+    const sVal=shpCol&&d.metadata?d.metadata[shpCol][i]||'NA':'_all_';
+    const key=cVal+'|||'+sVal;
+    if(!groups[key])groups[key]={cVal,sVal,idx:[]};
+    groups[key].idx.push(i);
+  });
+
+  const uniqueColors=[...new Set(Object.values(groups).map(g=>g.cVal))];
+  const uniqueShapes=[...new Set(Object.values(groups).map(g=>g.sVal))];
+
+  const traces=[];
+  Object.values(groups).forEach(g=>{
+    const ci=uniqueColors.indexOf(g.cVal)%COLORS.length;
+    const si=uniqueShapes.indexOf(g.sVal)%SYMBOLS_2D.length;
+    const name=[colCol?g.cVal:null,shpCol?g.sVal:null].filter(Boolean).join(' / ')||'Samples';
+
+    const hovertext=g.idx.map(i=>{
+      let txt=`<b>${d.samples[i]}</b>`;
+      if(d.metadata)d.metadata_columns.forEach(col=>{txt+=`<br>${col}: ${d.metadata[col][i]}`;});
+      return txt;
+    });
+
+    const trace={x:g.idx.map(i=>o.axis1[i]),y:g.idx.map(i=>o.axis2[i]),
+      text:betaLabels?g.idx.map(i=>d.samples[i]):undefined,hovertext,hoverinfo:'text',
+      mode:betaLabels?'markers+text':'markers',textposition:'top center',textfont:{size:9},name,
+      marker:{color:COLORS[ci],symbol:SYMBOLS_2D[si],size:beta3d?5:9,line:{width:1,color:'rgba(0,0,0,0.3)'}},
+    };
+    if(beta3d){trace.z=g.idx.map(i=>o.axis3[i]);trace.type='scatter3d';}
+    else trace.type='scatter';
+    traces.push(trace);
+  });
+
+  const layout=beta3d?{
+    paper_bgcolor:bg,plot_bgcolor:bg,font:{color:fg,family:'Inter,sans-serif',size:11},
+    margin:{l:10,r:10,t:30,b:10},
+    scene:{xaxis:{title:xLabel,gridcolor:grid,color:fg},yaxis:{title:yLabel,gridcolor:grid,color:fg},zaxis:{title:zLabel,gridcolor:grid,color:fg},bgcolor:bg},
+    showlegend:true,legend:{font:{size:10}},
+  }:{
+    paper_bgcolor:bg,plot_bgcolor:bg,font:{color:fg,family:'Inter,sans-serif',size:11},
+    margin:{l:60,r:20,t:30,b:60},
+    xaxis:{title:xLabel,gridcolor:grid,zerolinecolor:grid,color:fg},
+    yaxis:{title:yLabel,gridcolor:grid,zerolinecolor:grid,color:fg},
+    showlegend:true,legend:{font:{size:10}},
+  };
+
+  Plotly.newPlot(document.getElementById('betaOrdinationPlot'),traces,layout,{responsive:true});
+}
+
+function renderBetaHeatmap(){
+  const d=betaData;
+  const dm=d.distance_matrix;
+  const light=isLight();
+  const fg=light?'#18181b':'#fafafa';
+  const bg=light?'#ffffff':'#131316';
+
+  const trace={z:dm.matrix,x:dm.labels,y:dm.labels,type:'heatmap',
+    colorscale:[[0,'#131316'],[0.5,'#6366f1'],[1,'#ef4444']],
+    hovertemplate:'%{y} vs %{x}: %{z:.4f}<extra></extra>',
+    colorbar:{title:'Distance',titlefont:{color:fg},tickfont:{color:fg}},
+  };
+  const layout={paper_bgcolor:bg,plot_bgcolor:bg,font:{color:fg,family:'Inter,sans-serif',size:11},
+    margin:{l:80,r:20,t:20,b:80},
+    xaxis:{tickangle:-45,tickfont:{size:8},color:fg},
+    yaxis:{tickfont:{size:8},color:fg,autorange:'reversed'},
+  };
+  Plotly.newPlot(document.getElementById('betaHeatmapPlot'),[trace],layout,{responsive:true});
+}
+
+function renderBetaStats(data){
+  const el=document.getElementById('betaStatsContent');
+  if(!data.statistics){el.innerHTML='<p style="color:var(--text-muted);font-size:0.75rem">No statistics computed. Select a grouping variable and re-run.</p>';return;}
+  const s=data.statistics;
+  let html='';
+
+  if(s.permanova&&!s.permanova.error){
+    const p=s.permanova;
+    html+=`<div style="margin-bottom:1rem"><h4 style="font-size:0.7rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;margin-bottom:0.5rem">PERMANOVA</h4>`;
+    html+=`<table class="stats-table"><tbody>`;
+    html+=`<tr><td>F-statistic</td><td>${p.f_statistic}</td></tr>`;
+    html+=`<tr><td>p-value</td><td>${p.p_value}</td></tr>`;
+    html+=`<tr><td>Permutations</td><td>${p.permutations}</td></tr>`;
+    html+=`</tbody></table></div>`;
+  }
+
+  if(s.permdisp&&!s.permdisp.error){
+    const p=s.permdisp;
+    html+=`<div style="margin-bottom:1rem"><h4 style="font-size:0.7rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;margin-bottom:0.5rem">PERMDISP (dispersion test)</h4>`;
+    html+=`<table class="stats-table"><tbody>`;
+    html+=`<tr><td>F-statistic</td><td>${p.f_statistic}</td></tr>`;
+    html+=`<tr><td>p-value</td><td>${p.p_value}</td></tr>`;
+    html+=`</tbody></table>`;
+    if(p.warning)html+=`<div style="background:var(--warning-glow);border:1px solid rgba(245,158,11,0.2);border-radius:6px;padding:0.5rem;margin-top:0.5rem;font-size:0.7rem;color:var(--warning)">${p.warning}</div>`;
+    html+=`</div>`;
+  }
+
+  if(s.anosim&&!s.anosim.error){
+    const a=s.anosim;
+    html+=`<div style="margin-bottom:1rem"><h4 style="font-size:0.7rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;margin-bottom:0.5rem">ANOSIM</h4>`;
+    html+=`<table class="stats-table"><tbody>`;
+    html+=`<tr><td>R statistic</td><td>${a.r_statistic}</td></tr>`;
+    html+=`<tr><td>p-value</td><td>${a.p_value}</td></tr>`;
+    html+=`</tbody></table></div>`;
+  }
+
+  if(s.pairwise_permanova&&Array.isArray(s.pairwise_permanova)&&s.pairwise_permanova.length){
+    html+=`<div><h4 style="font-size:0.7rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;margin-bottom:0.5rem">Pairwise PERMANOVA</h4>`;
+    html+=`<table class="stats-table"><thead><tr><th>Group 1</th><th>Group 2</th><th>F</th><th>p</th><th>p (adj)</th><th>Sig</th></tr></thead><tbody>`;
+    s.pairwise_permanova.forEach(pw=>{
+      html+=`<tr><td>${pw.group1}</td><td>${pw.group2}</td><td>${pw.f_statistic}</td><td>${pw.p_value}</td><td>${pw.p_adjusted}</td><td>${pw.significant?'*':''}</td></tr>`;
+    });
+    html+=`</tbody></table></div>`;
+  }
+
+  if(data.rarefaction_seed!=null)html+=`<p style="font-size:0.6rem;color:var(--text-muted);margin-top:0.75rem">Seed: ${data.rarefaction_seed}</p>`;
+  el.innerHTML=html;
+}
+
+window.downloadBetaDistCsv=function(){
+  if(!betaData)return;
+  const dm=betaData.distance_matrix;
+  let csv=','+dm.labels.join(',')+'\n';
+  dm.labels.forEach((id,i)=>{csv+=id+','+dm.matrix[i].map(v=>v.toFixed(6)).join(',')+'\n';});
+  downloadBlob(csv,'distance_matrix.csv','text/csv');
+};
+window.downloadBetaCoordsCsv=function(){
+  if(!betaData)return;
+  const o=betaData.ordination;
+  let csv='Sample,Axis1,Axis2,Axis3\n';
+  betaData.samples.forEach((s,i)=>{csv+=`${s},${o.axis1[i]},${o.axis2[i]},${o.axis3[i]}\n`;});
+  downloadBlob(csv,'ordination_coordinates.csv','text/csv');
+};
+window.downloadBetaStatsCsv=function(){
+  if(!betaData||!betaData.statistics)return;
+  const s=betaData.statistics;
+  let csv='Test,Statistic,Value,P_value\n';
+  if(s.permanova)csv+=`PERMANOVA,F,${s.permanova.f_statistic},${s.permanova.p_value}\n`;
+  if(s.permdisp)csv+=`PERMDISP,F,${s.permdisp.f_statistic},${s.permdisp.p_value}\n`;
+  if(s.anosim)csv+=`ANOSIM,R,${s.anosim.r_statistic},${s.anosim.p_value}\n`;
+  downloadBlob(csv,'beta_statistics.csv','text/csv');
+};
+
+// ── Theme ──
+document.getElementById('themeToggle').addEventListener('click',()=>{
+  const html=document.documentElement;
+  const next=html.getAttribute('data-theme')==='light'?'dark':'light';
+  html.setAttribute('data-theme',next);
+  localStorage.setItem('biotools-theme',next);
+  if(alphaData){renderAlphaPlots();renderAlphaRarefaction(alphaData);}
+  if(betaData){renderBetaOrdination();renderBetaHeatmap();}
+});
+(()=>{const s=localStorage.getItem('biotools-theme');if(s==='light')document.documentElement.setAttribute('data-theme','light');})();
+</script>
+</body>
+</html>
